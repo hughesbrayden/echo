@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import Announcer from "@/components/Announcer";
-import { SPEECH_STYLE, toPhrase, type Announcement } from "@/lib/announce";
+import { commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -11,8 +11,14 @@ import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motio
 
 // Sample announcements for the test buttons.
 const TESTS: { label: string; announcement: Announcement }[] = [
-  { label: "Warning", announcement: { kind: "warning", object: "chair", direction: "ahead", distance: "close" } },
-  { label: "Alarm", announcement: { kind: "warning", object: "person", direction: "ahead", urgent: true } },
+  {
+    label: "Warning",
+    announcement: { kind: "warning", object: "chair", direction: "ahead", distance: "near", guidance: "left" },
+  },
+  {
+    label: "Alarm",
+    announcement: { kind: "warning", object: "person", direction: "ahead", urgent: true, guidance: "right" },
+  },
   {
     label: "Describe",
     announcement: {
@@ -88,10 +94,8 @@ export default function Camera() {
       await video.play();
 
       setAnnouncement({ kind: "description", text: "Echo on" });
-      // Alarm phrases are pre-made clips so the words follow the tone at once.
-      void preload(
-        urgentWarnings().map((w) => ({ text: toPhrase(w), style: SPEECH_STYLE.warning })),
-      );
+      // Commands and alarm phrases are pre-made clips so they play at once.
+      void preload([...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])]);
 
       if (motionGranted) {
         motionRef.current = new MotionTracker();
