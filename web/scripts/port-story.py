@@ -54,6 +54,15 @@ css += """
 .cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .cta-btn:hover { background: var(--bg-3); }
 .cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+.closer-cta { display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 16px; font-weight: 500; text-decoration: none; }
+.closer-cta:hover { background: #262A33; }
+/* In deck mode the site nav stays on screen at the top, where it sits on the Live demo page;
+   the deck's bottom bar carries the chapters. */
+html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; }
+html.is-deck .chapters { display: none; }
+html.is-deck .slide { top: 60px; }
+html.is-deck .deck-ch .brand { display: none; }
+.demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
 .demo .film-video { width: min(100%, 380px); }
@@ -82,17 +91,8 @@ body = swap(' <span class="tag">Video coming</span>', "", body)
 film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
 body = body.replace(film, VIDEO, 1)
 body = swap(
-    "  <footer>",
-    '  <section class="wrap" aria-labelledby="h-try">\n'
-    '    <div class="cta">\n'
-    "      <div>\n"
-    '        <h2 id="h-try">See Echo on a real walk.</h2>\n'
-    "        <p>Watch the live demo: Echo running on a phone, with everything it heard and said on screen.</p>\n"
-    "      </div>\n"
-    '      <a class="cta-btn" href="/demo">Watch the live demo</a>\n'
-    "    </div>\n"
-    "  </section>\n\n"
-    "  <footer>",
+    '<p class="limits">Echo is an early heads-up',
+    '<a class="closer-cta" href="/demo">Watch the live demo</a>\n        <p class="limits">Echo is an early heads-up',
     body,
 )
 
@@ -100,11 +100,14 @@ body = swap(
 # now, so the live demo is the recording of a real walk.
 header = one(r'<header class="nav">.*?</header>', body).group(0)
 header = header.replace(site_nav("story"), site_nav("demo")).replace('href="#', 'href="/#')
-footer = one(r"<footer>.*?</footer>", body).group(0).replace('href="#top"', 'href="/"')
+limits = one(r'<p class="limits">.*?</p>', body).group(0)
+header = header.replace('href="/#top"', 'href="/"')
+brand = one(r'<a class="brand" href="/">.*?</a>', header).group(0)
+footer = f'<footer>\n    <div class="wrap foot">\n      {brand}\n      {limits}\n    </div>\n  </footer>'
 demo_body = f"""{header}
 
 <main id="top">
-  <section class="chapter first" aria-labelledby="h-demo">
+  <section class="demo-page" aria-labelledby="h-demo">
     <div class="wrap">
       <div class="chapter-head">
         <div class="head-l">

@@ -75,8 +75,6 @@ p { margin: 0; }
 .tag { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 4px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; }
 .card { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
 
-section.chapter { padding-block: clamp(96px, 12vw, 160px) 0; }
-section.chapter.first { padding-top: clamp(48px, 7vw, 96px); }
 .chapter-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: clamp(40px, 5vw, 64px); }
 .chapter-head .head-l { display: flex; flex-direction: column; gap: 24px; }
 @media (max-width: 900px) { .chapter-head { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
@@ -383,9 +381,43 @@ text.ld-s, .ld-echo text.ld-s { font-family: var(--font-sans); font-size: 12.5px
 .how2 li { font-size: 15px; line-height: 1.5; color: var(--ink-2); }
 .how2 li b { color: var(--ink); font-weight: 600; }
 @media (max-width: 860px) { .how2 { grid-template-columns: minmax(0, 1fr); } }
+/* Slides. On a laptop or projector the page is a deck: one slide per screen, stepped with the
+   presenter bar or the arrow keys, each slide zoomed to fit so nothing scrolls. On a phone it
+   falls back to one long page. */
+.slide { padding-block: 56px 0; }
+.slide-sub { margin-bottom: 20px; }
+.closer { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding-block: 40px; }
+.closer .brand { font-size: 22px; }
+.closer-h { font-size: clamp(44px, 6vw, 88px); line-height: 1; letter-spacing: -0.05em; font-weight: 500; }
+.closer .limits { max-width: 56ch; color: var(--ink-3); }
+.deck-bar { display: none; }
+html.is-deck, html.is-deck body { height: 100%; overflow: hidden; }
+html.is-deck .nav { display: none; }
+html.is-deck .slide { position: fixed; inset: 0 0 64px 0; padding: 32px 0 24px; display: flex; align-items: center; opacity: 0; visibility: hidden; transition: opacity 280ms ease, visibility 0s linear 280ms; overflow: hidden; }
+html.is-deck .slide.on { opacity: 1; visibility: visible; transition: opacity 280ms ease; }
+html.is-deck .slide-inner { width: 100%; }
+html.is-deck .chapter-head { margin-bottom: 24px; }
+html.is-deck .question { margin: 0; border-top: 0; padding-top: 0; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+html.is-deck .question .q-ask { font-size: clamp(40px, 5.2vw, 76px); line-height: 1.04; max-width: 20ch; }
+html.is-deck .claim { margin-top: 0; }
+html.is-deck .pillars { margin-top: 0; }
+html.is-deck .lanes-head { margin-top: 0; }
+html.is-deck .map-row { margin-top: 0; }
+html.is-deck footer { display: none; }
+html.is-deck .deck-bar { display: block; position: fixed; left: 0; right: 0; bottom: 0; height: 64px; z-index: 30; background: rgba(255, 255, 255, 0.92); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-top: 1px solid var(--line); }
+.deck-in { max-width: var(--wrap); margin: 0 auto; padding-inline: max(20px, 4vw); height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.deck-ch { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.deck-ch .brand { margin-right: 16px; font-size: 16px; }
+.deck-ch button { display: inline-flex; gap: 8px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-3); font: inherit; font-size: 14px; cursor: pointer; }
+.deck-ch button span { font-family: var(--font-mono); font-size: 11px; }
+.deck-ch button:hover { color: var(--ink); }
+.deck-ch button.on { color: var(--ink); background: var(--bg-3); }
+.deck-ctl { display: flex; align-items: center; gap: 8px; }
+.deck-n { font-size: 12px; color: var(--ink-3); margin-right: 8px; }
+.deck-next { background: var(--ink); color: #FFFFFF; border-color: var(--ink); }
+.deck-next:hover { background: #262A33; }
+.deck-progress { position: absolute; left: 0; top: -1px; height: 2px; background: var(--voice); transition: width 280ms ease; }
 /* Compact pass: every block fits in about one screen, with less scrolling between points. */
-section.chapter { padding-block: clamp(64px, 7vw, 96px) 0; }
-section.chapter.first { padding-top: clamp(40px, 5vw, 64px); }
 h1.chap, h2 { font-size: clamp(32px, 3.8vw, 52px); }
 .chapter-head { margin-bottom: clamp(24px, 3vw, 40px); gap: 40px; }
 .lede { font-size: clamp(17px, 1.4vw, 19px); }
@@ -424,6 +456,9 @@ h1.chap, h2 { font-size: clamp(32px, 3.8vw, 52px); }
 .stack div { padding: 14px 16px; }
 footer { margin-top: clamp(72px, 8vw, 112px); }
 
+html.is-deck .chapter-head { margin-bottom: 24px; }
+html.is-deck .question { margin: 0; border-top: 0; padding-top: 0; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -440,6 +475,15 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
 .cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .cta-btn:hover { background: var(--bg-3); }
 .cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+.closer-cta { display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 16px; font-weight: 500; text-decoration: none; }
+.closer-cta:hover { background: #262A33; }
+/* In deck mode the site nav stays on screen at the top, where it sits on the Live demo page;
+   the deck's bottom bar carries the chapters. */
+html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; }
+html.is-deck .chapters { display: none; }
+html.is-deck .slide { top: 60px; }
+html.is-deck .deck-ch .brand { display: none; }
+.demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
 .demo .film-video { width: min(100%, 380px); }
@@ -462,10 +506,9 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
   </div>
 </header>
 
-<main id="top">
-  <!-- 01 Problem -->
-  <section class="chapter first" id="problem" aria-labelledby="h-problem">
-    <div class="wrap">
+<main id="top" class="deck">
+  <section class="slide " id="problem" data-ch="problem" data-title="The problem">
+    <div class="wrap slide-inner">
       <div class="chapter-head">
         <div class="head-l">
           <span class="eyebrow"><b>01</b> The problem</span>
@@ -527,6 +570,11 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
         </div>
       </figure>
 
+    </div>
+  </section>
+
+  <section class="slide center" data-ch="problem" data-title="The question">
+    <div class="wrap slide-inner">
       <div class="question">
         <span class="eyebrow">The question</span>
         <div class="q-body">
@@ -536,14 +584,13 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
     </div>
   </section>
 
-  <!-- 02 Echo -->
-  <section class="chapter" id="echo" aria-labelledby="h-echo">
-    <div class="wrap">
+  <section class="slide " id="echo" data-ch="echo" data-title="Echo">
+    <div class="wrap slide-inner">
       <div class="chapter-head solo">
         <div class="head-l">
           <span class="eyebrow"><b>02</b> The solution</span>
           <h2 id="h-echo">Echo, a lookout you can wear.</h2>
-          <p class="lede" style="max-width:60ch">Echo is an agentic navigation system built for video glasses. As you walk, it shares important details about your surroundings to help you navigate with confidence.</p>
+          <p class="lede" style="max-width:60ch">Echo is an agentic navigation system built for video glasses. As you walk, it tells you what's in your way and how to get around it, and stays quiet the rest of the time.</p>
         </div>
       </div>
 
@@ -591,6 +638,12 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <section class="slide " data-ch="echo" data-title="The walk">
+    <div class="wrap slide-inner">
+      <div class="slide-sub"><span class="eyebrow"><b>02</b> The walk, seen from above</span></div>
       <div class="map-row">
       <figure class="card trip" aria-label="A walk down an office hallway seen from above. Echo stays quiet most of the way, says Bear left, chair ahead, then Keep right, door on your left, and sounds one alarm when a person steps out.">
         <div class="trip-bar">
@@ -683,9 +736,8 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
     </div>
   </section>
 
-  <!-- 03 Different -->
-  <section class="chapter" id="different" aria-labelledby="h-diff">
-    <div class="wrap">
+  <section class="slide " id="different" data-ch="different" data-title="The market">
+    <div class="wrap slide-inner">
       <div class="chapter-head">
         <div class="head-l">
           <span class="eyebrow"><b>03</b> What sets us apart</span>
@@ -720,6 +772,12 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <section class="slide center" data-ch="different" data-title="Our claim">
+    <div class="wrap slide-inner">
+      <div class="slide-sub"><span class="eyebrow"><b>03</b> What sets us apart</span></div>
       <div class="claim">
         <div class="claim-h"><span class="eyebrow"><b>Echo</b></span><p>The hard part isn't seeing. <span>It's deciding when to speak.</span></p></div>
         <div class="claim-c"><span class="i">Effective</span><h3>It speaks first, in words, only when it helps.</h3><p class="dim">No asking, no guessing what a beep means. "Bear left. Chair ahead." Then quiet again.</p></div>
@@ -727,12 +785,23 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
         <div class="claim-c"><span class="i">Seamless</span><h3>Built into glasses, not a clunky rig.</h3><p class="dim">No harness, no chest-mounted camera, no extra device to hold. It looks and wears like ordinary glasses.</p></div>
       </div>
 
+    </div>
+  </section>
+
+  <section class="slide " data-ch="different" data-title="Four ways">
+    <div class="wrap slide-inner">
       <div class="lanes-head"><span class="eyebrow">The same walk, heard four ways</span></div>
       <div class="card lanes">
         <div class="lanes-scroll"><svg id="lanes" viewBox="0 0 1160 470" role="img" aria-label="Four audio lanes over the same thirty-second walk past a chair, a door and a person. A narrator talks constantly. A describer is silent unless asked. An obstacle wearable beeps without words. Echo is silent except for two short phrases and one alarm."></svg></div>
         <div class="lanes-cap"><span>Illustration of each approach over the same route.</span><span class="mono">0 to 30 s</span></div>
       </div>
 
+    </div>
+  </section>
+
+  <section class="slide center" data-ch="different" data-title="Trust">
+    <div class="wrap slide-inner">
+      <div class="slide-sub"><span class="eyebrow"><b>03</b> Built to be trusted</span></div>
       <div class="pillars">
         <div><span class="i">Built around silence</span><h3>Success is what it didn't say.</h3><p class="dim">Fewer words, without missing anything that mattered.</p></div>
         <div><span class="i">Measured, not guessed</span><h3>It decides with probabilities.</h3><p class="dim">Thresholds we can test on recorded walks and tune.</p></div>
@@ -744,9 +813,8 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
     </div>
   </section>
 
-  <!-- 04 Built -->
-  <section class="chapter" id="built" aria-labelledby="h-built">
-    <div class="wrap">
+  <section class="slide " id="built" data-ch="built" data-title="Pipeline">
+    <div class="wrap slide-inner">
       <div class="chapter-head">
         <div class="head-l">
           <span class="eyebrow"><b>04</b> How we built it</span>
@@ -794,9 +862,14 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <section class="slide " data-ch="built" data-title="Decision model">
+    <div class="wrap slide-inner">
+      <div class="slide-sub"><span class="eyebrow"><b>04</b> Why a decision model</span></div>
       <div class="decision">
         <div class="txt">
-          <span class="eyebrow">Why a decision model</span>
           <h3 style="font-size:clamp(26px,2.6vw,34px);line-height:1.12;letter-spacing:-0.03em">A chat model gives you a sentence. A decision model gives you a number you can tune.</h3>
           <p class="dim">Each question comes back as a probability, so "should Echo speak?" becomes a threshold we can test against recorded walks instead of a prompt we hope behaves.</p>
           <p class="dim">It only charges for input, about a cent per minute of walking. <span class="tag">Estimate</span></p>
@@ -824,23 +897,29 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
     </div>
   </section>
 
-  <section class="wrap" aria-labelledby="h-try">
-    <div class="cta">
-      <div>
-        <h2 id="h-try">See Echo on a real walk.</h2>
-        <p>Watch the live demo: Echo running on a phone, with everything it heard and said on screen.</p>
+  <section class="slide center" data-ch="close" data-title="Close">
+    <div class="wrap slide-inner">
+      <div class="closer">
+        <a class="brand" href="#problem"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
+        <p class="closer-h">Quiet until it matters.</p>
+        <a class="closer-cta" href="/demo">Watch the live demo</a>
+        <p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
       </div>
-      <a class="cta-btn" href="/demo">Watch the live demo</a>
     </div>
   </section>
 
-  <footer>
-    <div class="wrap foot">
-      <a class="brand" href="#top"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
-      <p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
-    </div>
-  </footer>
 </main>
+<nav class="deck-bar" aria-label="Slides">
+  <div class="deck-in">
+    <div class="deck-ch" id="deck-ch"></div>
+    <div class="deck-ctl">
+      <span class="deck-n mono" id="deck-n">1 / 11</span>
+      <button class="btn" id="deck-prev" type="button" aria-label="Previous slide">Back</button>
+      <button class="btn deck-next" id="deck-next" type="button" aria-label="Next slide">Next</button>
+    </div>
+  </div>
+</nav>
+
 
 <script>
 (function () {
@@ -1343,6 +1422,73 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
     this.textContent = st.sound ? 'Sound on' : 'Sound off';
     if (st.sound) chime(function () {});
   });
+})();
+/* The deck: one slide at a time, Back and Next, arrow keys, and a pill per chapter. */
+(function () {
+  var root = document.documentElement, slides = [].slice.call(document.querySelectorAll('.slide'));
+  var bar = document.querySelector('.deck-bar'), chEl = document.getElementById('deck-ch'), nEl = document.getElementById('deck-n');
+  var prog = document.createElement('div'); prog.className = 'deck-progress'; bar.appendChild(prog);
+  var CH = [['problem', '01', 'Problem'], ['echo', '02', 'Echo'], ['different', '03', 'Different'], ['built', '04', 'Built']];
+  chEl.innerHTML = '<a class="brand" href="#problem"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>' +
+    CH.map(function (c) { return '<button type="button" data-ch="' + c[0] + '"><span>' + c[1] + '</span>' + c[2] + '</button>'; }).join('');
+  var cur = 0, fitting = false;
+  function deckOn() { return window.innerWidth >= 900 && window.innerHeight >= 560; }
+  function fit(i) {
+    var sl = slides[i], inner = sl.querySelector('.slide-inner');
+    inner.style.zoom = 1; inner.style.width = '';
+    var avail = sl.clientHeight - 56, h = inner.scrollHeight;
+    var z = Math.min(1, avail / h);
+    inner.style.zoom = z < 1 ? z.toFixed(3) : '';
+    if (z < 1) inner.style.width = (100 / z).toFixed(2) + '%';
+  }
+  function refreshCanvases() { fitting = true; window.dispatchEvent(new Event('resize')); fitting = false; }
+  function go(i, push) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, k) { s.classList.toggle('on', k === cur); s.setAttribute('aria-hidden', k === cur ? 'false' : 'true'); });
+    nEl.textContent = (cur + 1) + ' / ' + slides.length;
+    prog.style.width = ((cur + 1) / slides.length * 100) + '%';
+    var ch = slides[cur].getAttribute('data-ch');
+    chEl.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ch') === ch); });
+    document.getElementById('deck-prev').disabled = cur === 0;
+    document.getElementById('deck-next').disabled = cur === slides.length - 1;
+    if (push !== false) history.replaceState(null, '', '#s' + (cur + 1));
+    fit(cur); refreshCanvases();
+    requestAnimationFrame(function () { fit(cur); refreshCanvases(); });
+  }
+  function fromHash() {
+    var h = location.hash.slice(1); if (!h) return 0;
+    var m = /^s(\d+)$/.exec(h); if (m) return parseInt(m[1], 10) - 1;
+    var t = document.getElementById(h); if (!t) return 0;
+    var sl = t.closest('.slide'); return sl ? slides.indexOf(sl) : 0;
+  }
+  function setMode() {
+    var on = deckOn();
+    if (on === root.classList.contains('is-deck')) { if (on && !fitting) fit(cur); return; }
+    root.classList.toggle('is-deck', on);
+    if (on) go(fromHash(), false);
+    else slides.forEach(function (s) { s.classList.remove('on'); s.removeAttribute('aria-hidden'); var n = s.querySelector('.slide-inner'); n.style.zoom = ''; n.style.width = ''; });
+    refreshCanvases();
+  }
+  document.getElementById('deck-prev').addEventListener('click', function () { go(cur - 1); });
+  document.getElementById('deck-next').addEventListener('click', function () { go(cur + 1); });
+  chEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var ch = b.getAttribute('data-ch'); for (var k = 0; k < slides.length; k++) if (slides[k].getAttribute('data-ch') === ch) { go(k); break; }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!root.classList.contains('is-deck') || e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && tag !== 'button')) { e.preventDefault(); go(cur + 1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); go(cur - 1); }
+    else if (k === 'Home') { e.preventDefault(); go(0); }
+    else if (k === 'End') { e.preventDefault(); go(slides.length - 1); }
+  });
+  window.addEventListener('hashchange', function () { if (root.classList.contains('is-deck')) go(fromHash(), false); });
+  window.addEventListener('resize', function () { if (!fitting) setMode(); });
+  setMode();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (root.classList.contains('is-deck')) fit(cur); });
 })();
 </script>
 </body>
