@@ -32,6 +32,7 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 | `worth_saying` | predicate | Is something new, compared to what was last said, that the wearer would want to know now? |
 | `urgency` | score | none, notice, caution, stop |
 | `subject` | choice | obstacle, person, stairs, door, sign, vehicle, other |
+| `direction` | choice | left, ahead, right |
 
 **Routing:** high `hazard_close` plus `urgency` near stop sounds the alarm. A high `worth_saying` triggers words. Everything else is silence.
 
@@ -76,15 +77,55 @@ Today's tools either talk only when asked, or warn on their own with beeps inste
 
 Echo's angle is a gate on everyday glasses that you can tune, test and personalize: thresholds you set from data, and attention rules written in plain English.
 
-## Saturday plan
+## v1 build plan (hackathon day)
 
-Get a dumb version working end to end by lunch, then make it smart.
+The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" before the chair, and sounds the alarm when someone steps in front. Everything else waits until that works end to end.
 
-- [ ] **Friday night:** repo, OpenAI key with one test call, Vercel project deployed (its HTTPS lets the phone use its camera), head mount for the phone
-- [ ] **Morning:** phone posts frames to the Vercel function, which saves them for replay and returns a test phrase the phone speaks
-- [ ] **Midday:** Decisions API with the starting questions, routing, alarm tone
-- [ ] **Afternoon:** replay harness on labelled frames, test context and trends, add words
-- [ ] **Evening:** tune thresholds on the demo course, record a backup video, write the pitch
+### The contract both halves build against
+
+Defined in [`lib/contract.ts`](../lib/contract.ts). Change it there first, then on both sides.
+
+```
+POST /api/decide
+in:  { images: [jpeg data URLs, newest last], recent: [{ text, secondsAgo }], userRules? }
+out: { hazard_close, worth_saying, urgency (0-3), subject, direction, latencyMs, stub }
+```
+
+With no `OPENAI_API_KEY` (or `?stub=1`), the endpoint returns fake answers, so the phone side never waits on the API side.
+
+### Who does what
+
+| Brayden: decisions | Teammate: phone and hosting |
+| --- | --- |
+| Get the key calling the Decisions API: `node scripts/test-decision.mjs photo.jpg` | Deploy this repo to Vercel, set `OPENAI_API_KEY` |
+| Own [`lib/questions.ts`](../lib/questions.ts) and [`lib/decisions.ts`](../lib/decisions.ts) | Own [`app/page.tsx`](../app/page.tsx) and [`lib/audio.ts`](../lib/audio.ts) |
+| Tune thresholds in [`lib/router.ts`](../lib/router.ts) on recorded walks | Camera loop, alarm, Gemini TTS for words, recording and `/demo` page |
+
+Merge point: when the real `/api/decide` returns answers, untick "Use fake answers" on the phone. That is the first end-to-end run.
+
+### Milestones
+
+- [x] **M0, scaffold:** contract, stub API, camera page, alarm tone, browser speech (this commit)
+- [ ] **M1, camera to probabilities:** deployed on Vercel, real answers on screen from the phone
+- [ ] **M2, end-to-end loop:** continuous frames, routing, alarm and words on the phone
+- [ ] **M3, better voice and context:** Gemini TTS for words, alarm phrase as a pre-made clip, recent speech in every request
+- [ ] **M4, recorded demo:** record a walk, store it, play it back on `/demo` with the decisions overlaid
+
+Cut until M2 works: a speaking LLM, the cheap pre-check, motion sensors, and the replay harness.
+
+### Streaming
+
+The Decisions API takes images, not video. The camera streams live in the browser, the page grabs a 640px JPEG every 250 ms into a small buffer, and whenever the previous request returns it sends the newest frame plus one from about 0.5 s earlier. Answers older than 2.5 s are dropped rather than spoken late.
+
+### Recorded demo (M4)
+
+While walking, record the camera with `MediaRecorder` and keep the decision log the page already builds (time, probabilities, outcome). Upload the video straight from the browser to Vercel Blob or Supabase Storage, not through the function, which caps request bodies at about 4.5 MB. A `/demo` page plays the video with the log synced on top: captions for words, a red flash and the tone for the alarm, live probability bars. Letting the pipeline read a video file instead of the camera means the same walk can be rerun through a new prompt version for a before-and-after.
+
+### Check first
+
+- The OpenAI key can call the Decisions API (it is in public beta).
+- iOS plays sound only after a tap, so the page starts with a big Start button.
+- The phone camera needs HTTPS: use the Vercel URL, not a local IP.
 
 ## Risks and the pitch
 
