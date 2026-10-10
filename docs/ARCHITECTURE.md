@@ -160,6 +160,6 @@ While walking, record the camera with `MediaRecorder` and keep the decision log 
 - **Latency:** each decision call takes roughly 0.3 to 1 s, mostly network. Echo is an early heads-up, not collision avoidance, and it supplements a cane, never replaces one.
 - **Venue wifi:** run on a phone hotspot and keep a backup video.
 - **Beta API:** if a call is slow or fails, skip that frame rather than speak late.
-- **Made-up objects:** never say a path is clear or safe. "Keep walking." is said after a go-around once two frames in a row are calm, and as a check-in after 20 s of quiet while walking; it only needs the wearer walking, facing forward, with the ground in view, and is worded as encouragement, not a claim that the way is safe.
+- **Made-up objects:** never say a path is clear or safe.
 
 **Pitch:** play ten seconds of an assistant that narrates everything, then show a blindfolded walk where Echo stays quiet, names the chair, and sounds the alarm when someone steps in front. Close on the dashboard showing how much it chose not to say, and how each prompt version scored.
