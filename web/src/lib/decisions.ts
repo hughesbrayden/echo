@@ -193,12 +193,13 @@ const QUESTIONS = [
 
 function contextText(recent: Recent[], motion: Motion | null): string {
   recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
-  const lines = [
-    "Head-mounted camera worn by a blind pedestrian.",
-    "The image center is where they face; the walking path is the floor in the lower middle of the image.",
-  ];
+  const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
+    // Only true while they look where they walk; a head turn moves the path.
+    if (motion.walking && !motion.turning) {
+      lines.push("They are facing the way they walk, so the walking path is the floor in the lower middle of the image.");
+    }
   }
   lines.push(
     recent.length === 0
