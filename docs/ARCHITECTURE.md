@@ -24,7 +24,7 @@ The pipeline has four stages: capture, decide, respond, tune.
 
 The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`POST /v1/decisions`, model `gpt-6-luna`) takes text plus images and answers your questions with probabilities. It is in public beta, charges only for input ($0.10 per 1M tokens), and remembers nothing between calls, so each request must say what Echo recently said.
 
-**The question set.** Navigation is the frame: four gates ask what the wearer should do differently, and the rest supply the words.
+**The question set.** Navigation is the frame: four gates ask what the wearer should do differently, and the rest supply the words. No gate, no words.
 
 | Name | Type | Asks |
 | --- | --- | --- |
@@ -34,15 +34,37 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 | `orient` | predicate | Is there something that helps them know where they are or choose where to go (door, corner, crossing, stairs or a ramp to the side)? |
 | `subject` | choice | The one thing that matters most for navigation: person, chair, ..., stairs, step, curb, ramp, drop-off, street edge, door, crosswalk, corner, other |
 | `direction` | choice | left, ahead, right |
-| `distance` | score | far (over 3 m), near (1 to 3 m), close (under 1 m) |
+| `distance` | score | far, near, close. Replaced by metres when the camera tilt is known. |
+| `base_row` | score | Where that thing meets the ground in the frame; with eye height and tilt this gives metres. |
 | `room_left`, `room_right` | predicate | Is there walkable ground to get past what's in the way on that side? |
 | `new_in_view` | predicate | Is the thing that matters most new since the frame from when Echo last spoke, or clearly closer? Asked only when that frame is sent. |
 
-**Context**, in order: who is wearing the camera and how they are moving (walking pace, head turns, camera tilt, rounded and in plain words), the image, then what Echo said in the last 15 s, each line labelled by the gate it answered.
+**Context**, in order: who is wearing the camera and how they are moving (walking pace, looking away from the path, camera height and tilt, in plain rounded words), the frame from when Echo last spoke if any, the frame from half a second ago, the newest frame, what Echo said in the last 15 s labelled by gate, then the narrator's note as background that may be out of date.
 
-**Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise the strongest of `footing`, `course` and `orient` picks the kind of sentence ("Curb, just ahead. Slow down.", "Chair, a few steps ahead. Bear left.", "Door, on your right."). Right after Echo speaks the bar is higher and eases back over 15 s. No gate, no words.
+**Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise footing wins for height changes, course for things in the way, and orient only above a higher bar. Right after Echo speaks the bar is raised and eases back over 15 s, and words need the previous frame to agree unless the thing is close. On calm stretches, "Keep walking." now and then.
 
-Predicates are the safer gate: in [community tests](https://community.openai.com/t/decisions-api-is-now-available-in-public-beta/1403877), choice answers came out overconfident and shifted with option order.
+**Spoken lines lead with the action:** "Stop. Person in front. Step left." / "Bear left. Chair ahead." / "Slow down. Curb ahead." / "Door on your right." / "Keep walking."
+
+## The background narrator
+
+The decision model is fast but remembers nothing. Beside it, every 4 s the phone sends a short run of frames (about 1.5 s apart), what Echo said, and a motion log (camera pitch, head direction, walking, turning) to a slower reasoning call: `gpt-6-luna` on the Responses API with low reasoning effort, about 3 to 10 s per call. It returns a short ambient note (the kind of place, what the wearer is doing, what Echo already told them; no positions or distances) and whether the ground goes up or down. It never speaks on its own. Code: [`web/src/lib/narrator.ts`](../web/src/lib/narrator.ts), `POST /api/narrate`.
+
+- The note rides along with every frame, after the image, labelled as background that may be out of date. Notes older than 10 s are dropped.
+- Up or down is only added to ground warnings ("Stairs going down, just ahead.") when the last two narrations agree; one frame got it wrong in tests.
+- If it fails or is slow, the frame loop carries on without it.
+
+## Head motion
+
+The phone reports camera pitch (from gravity) and head direction relative to the walking direction (gyro yaw, re-centred while walking straight). While the camera looks up, ground warnings are skipped; while the head is turned more than 35° from the walking direction, go-around commands are skipped.
+
+## Distance from geometry
+
+The camera sits at the wearer's eye height (set on the start screen, default 160 cm) and the motion sensor gives its tilt, so a point on the ground at a known row of the frame is at a known distance: `eye height / tan(angle below level)`. Two score questions, `base_row` and `ground_row`, ask where the main thing and the height change meet the ground (from "above middle" to "below frame"); [`web/src/lib/geometry.ts`](../web/src/lib/geometry.ts) turns that into metres. Step counting from acceleration peaks gives cadence, and cadence × step length (about 0.45 × eye height) gives walking speed.
+
+- Close is within 1.5 m or 1.5 s of walking; near is within 4 m. When metres aren't available (no tilt, row at the horizon), the model's own far/near/close is used.
+- Near things are said in steps: "Chair, about 4 steps ahead. Bear left."
+- Both models get the geometry in words ("tilted 20° down; the bottom edge of the frame shows ground about 1.2 m ahead, the middle about 4.4 m") and the walking speed.
+- With the head level, the bottom of the frame is about 2.5 m ahead, so anything closer has its base cut off; "below frame" covers that.
 
 ## What to test
 
@@ -92,9 +114,9 @@ The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" be
 The phone posts each frame to `POST /api/frame` (multipart) and the server replies with what to do. Defined in [`web/src/app/api/frame/route.ts`](../web/src/app/api/frame/route.ts).
 
 ```
-in:  frame (JPEG), motion (JSON: walking, turning, yawDeg, stepsPerSecond, tiltDeg), recent (JSON: [{ text, secondsAgo, urgent, advice, key }]),
-     history (JSON: last 2 frames' stop, distance, gate), previous (JPEG, the frame before) + previousInfo (JSON: secondsAgo), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
-out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, room_left, room_right, latencyMs, stub } }
+in:  frame (JPEG), motion (JSON: walking, turning, yaw, pitch, headOffset, cadence), camera (JSON: eyeHeightM, vfovDeg, stepLengthM), narration (JSON: summary, secondsAgo, groundDirection), recent (JSON: [{ text, secondsAgo, urgent, advice, guided, key }]),
+     history (JSON: last 2 frames' stop, distance, gate), previous (JPEG from half a second ago) + previousInfo (JSON: secondsAgo), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
+out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | { kind: "clear" } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, base_row, meters, room_left, room_right, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.
@@ -138,6 +160,6 @@ While walking, record the camera with `MediaRecorder` and keep the decision log 
 - **Latency:** each decision call takes roughly 0.3 to 1 s, mostly network. Echo is an early heads-up, not collision avoidance, and it supplements a cane, never replaces one.
 - **Venue wifi:** run on a phone hotspot and keep a backup video.
 - **Beta API:** if a call is slow or fails, skip that frame rather than speak late.
-- **Made-up objects:** never say a path is clear or safe.
+- **Made-up objects:** never say a path is clear or safe. "Keep walking." is said after a go-around once two frames in a row are calm, and as a check-in after 20 s of quiet while walking; it only needs the wearer walking, facing forward, with the ground in view, and is worded as encouragement, not a claim that the way is safe.
 
 **Pitch:** play ten seconds of an assistant that narrates everything, then show a blindfolded walk where Echo stays quiet, names the chair, and sounds the alarm when someone steps in front. Close on the dashboard showing how much it chose not to say, and how each prompt version scored.

@@ -3,6 +3,7 @@
 // holds the API key so the phone never sees it.
 
 import type { Announcement } from "@/lib/announce";
+import type { CameraSetup } from "@/lib/geometry";
 import type { Motion } from "@/lib/motion";
 import {
   decide,
@@ -13,6 +14,7 @@ import {
   type Past,
   type Previous,
   type Recent,
+  type NarrationContext,
   type Reference,
 } from "@/lib/decisions";
 
@@ -49,13 +51,19 @@ export async function POST(request: Request) {
   let history: Past[];
   // When Echo last spoke about something, and how many times in a row.
   let referenceInfo: Omit<Reference, "imageDataUrl"> | null;
-  // How old the frame before this one is.
+  // The background narrator's latest summary.
+  let narration: NarrationContext | null;
+  // Camera height, field of view and step length, for distances.
+  let camera: CameraSetup | null;
+  // How old the frame from half a second ago is.
   let previousInfo: Omit<Previous, "imageDataUrl"> | null;
   try {
     motion = parseJson<Motion | null>(form, "motion", null);
     recent = parseJson<Recent[]>(form, "recent", []);
     history = parseJson<Past[]>(form, "history", []);
     referenceInfo = parseJson<Omit<Reference, "imageDataUrl"> | null>(form, "referenceInfo", null);
+    narration = parseJson<NarrationContext | null>(form, "narration", null);
+    camera = parseJson<CameraSetup | null>(form, "camera", null);
     previousInfo = parseJson<Omit<Previous, "imageDataUrl"> | null>(form, "previousInfo", null);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
@@ -68,7 +76,7 @@ export async function POST(request: Request) {
       ? { ...referenceInfo, imageDataUrl: await toDataUrl(referenceFrame) }
       : null;
 
-  // The frame just before this one, so the model can see what is moving.
+  // A frame from half a second earlier, so the model can see what is moving.
   const previousFrame = form.get("previous");
   const previous: Previous | null =
     previousInfo && previousFrame instanceof File && previousFrame.type.startsWith("image/")
@@ -81,7 +89,7 @@ export async function POST(request: Request) {
     if (!apiKey || process.env.ECHO_STUB === "1") {
       answers = stubAnswers(reference !== null);
     } else {
-      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous);
+      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous, narration, camera);
     }
   } catch (e) {
     // The phone skips this frame rather than speaking late.
@@ -89,7 +97,7 @@ export async function POST(request: Request) {
   }
 
   const body: FrameResponse = {
-    announcement: toAnnouncement(answers, recent, history, motion, referenceInfo),
+    announcement: toAnnouncement(answers, recent, history, motion, referenceInfo, narration, camera),
     sameObject: isSameObject(answers),
     bytes: frame.size,
     answers,

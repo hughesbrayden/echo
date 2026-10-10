@@ -31,10 +31,13 @@ export type Description = {
   text: string;
 };
 
-export type Announcement = Warning | Description;
+// "Keep walking.": nothing is in the way. Never "clear" or "safe".
+export type Clear = { kind: "clear" };
 
-// One spoken piece. Warnings are said as the object, then the direction to
-// take, each cached on its own so the short commands are always ready.
+export type Announcement = Warning | Description | Clear;
+
+// One spoken piece. Warnings are said as the action, then the thing, each
+// cached on its own so the short commands are always ready.
 export type Segment = { text: string; style: string; maxWaitMs: number };
 
 // Style hints for the TTS model, and how long to wait for Gemini before the
@@ -45,21 +48,17 @@ const VOICE = {
   warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 400 },
   command: { style: "firm and clear, a short instruction", maxWaitMs: 400 },
   description: { style: "calm, clear and even", maxWaitMs: 4000 },
+  clear: { style: "calm and steady, quietly encouraging", maxWaitMs: 400 },
 };
 
-// Where the thing is, in the words a guide would use.
-// Ground changes avoid "a step, a few steps ahead".
-const GROUND_PLACE: Record<Distance, string> = {
-  close: "right in front of you",
-  near: "just ahead",
-  far: "up ahead",
-};
+export const KEEP_WALKING: Segment = { text: "Keep walking.", ...VOICE.clear };
 
-const PLACE: Record<Direction, Record<Distance, string>> = {
-  ahead: { close: "right in front of you", near: "a few steps ahead", far: "up ahead" },
-  left: { close: "just to your left", near: "on your left", far: "off to your left" },
-  right: { close: "just to your right", near: "on your right", far: "off to your right" },
-};
+// Where the thing is, in as few words as a guide would use. How close it is
+// already shows in "Step" versus "Bear", so there are only two distances.
+function place(direction: Direction, close: boolean): string {
+  if (direction === "ahead") return close ? "in front" : "ahead";
+  return `on your ${direction}`;
+}
 
 // Firm, short instructions. Close or urgent things get "step", the rest "bear".
 function command(g: Guidance, close: boolean): string {
@@ -89,28 +88,30 @@ export function commandSegments(): Segment[] {
   return [...texts].map((text) => ({ text, ...VOICE.command }));
 }
 
-// Splits an announcement into what to say, in order, e.g.
-// ["Chair, a few steps ahead.", "Bear left."] or
-// ["Stop. Person right in front of you.", "Step right."].
+// Splits an announcement into what to say, in order. The action comes
+// first, so the wearer can act on the first word, then the reason:
+// ["Bear left.", "Chair ahead."], ["Slow down.", "Curb ahead."],
+// ["Stop. Person in front.", "Step right."], ["Door on your right."].
+// The alarm keeps "Stop." first and the way out last.
 export function toSegments(a: Announcement): Segment[] {
   if (a.kind === "description") return [{ text: a.text, ...VOICE.description }];
+  if (a.kind === "clear") return [KEEP_WALKING];
 
   const object = a.object.charAt(0).toUpperCase() + a.object.slice(1);
   const direction = a.direction ?? "ahead";
-  const segments: Segment[] = [];
+  const close = !!a.urgent || a.distance === "close";
+  const where = place(direction, close);
 
   if (a.urgent) {
-    segments.push({ text: `Stop. ${object} ${PLACE[direction].close}.`, ...VOICE.alarm });
-  } else {
-    const place = a.ground ? GROUND_PLACE[a.distance ?? "near"] : PLACE[direction][a.distance ?? "near"];
-    const text = a.reminder ? `${object} still ${place}.` : `${object}, ${place}.`;
-    segments.push({ text, ...VOICE.warning });
+    const segments: Segment[] = [{ text: `Stop. ${object} ${where}.`, ...VOICE.alarm }];
+    if (a.guidance) segments.push({ text: command(a.guidance, true), ...VOICE.command });
+    return segments;
   }
 
-  if (a.guidance) {
-    const close = !!a.urgent || a.distance === "close";
-    segments.push({ text: command(a.guidance, close), ...VOICE.command });
-  }
+  const what = a.reminder ? `${object} still ${where}.` : `${object} ${where}.`;
+  const segments: Segment[] = [];
+  if (a.guidance && !a.reminder) segments.push({ text: command(a.guidance, close), ...VOICE.command });
+  segments.push({ text: what, ...(a.advice === "orient" ? VOICE.description : VOICE.warning) });
   return segments;
 }
 
