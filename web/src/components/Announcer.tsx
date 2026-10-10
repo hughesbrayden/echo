@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { playAlarm } from "@/lib/alarm";
 import { toPhrase, toSegments, type Announcement } from "@/lib/announce";
 import { preload, speakAll, stopSpeaking, type Voice } from "@/lib/speech";
+import { severityOf, type Severity } from "@/components/Hud";
 
 type Props = {
   // Pass a new object each time something should be said.
@@ -22,6 +23,7 @@ export default function Announcer({ announcement, className }: Props) {
   // Id of the newest announcement being said.
   const latestRef = useRef(0);
   const [caption, setCaption] = useState<string | null>(null);
+  const [severity, setSeverity] = useState<Severity>("info");
   // Shown under the caption when the nicer voice wasn't used or nothing played.
   const [voice, setVoice] = useState<Voice | null>(null);
 
@@ -37,6 +39,7 @@ export default function Announcer({ announcement, className }: Props) {
 
     async function run() {
       setCaption(toPhrase(announcement!));
+      setSeverity(severityOf(announcement!));
       setVoice(null);
       if (isWarning) warningRef.current = id;
       if (urgent) {
@@ -63,10 +66,24 @@ export default function Announcer({ announcement, className }: Props) {
 
   if (!caption) return null;
   return (
-    <p className={className}>
-      “{caption}”
-      {voice === "browser" && <span className="ml-2 text-xs opacity-60">phone voice</span>}
-      {voice === "none" && <span className="ml-2 text-xs text-red-400">no sound played</span>}
-    </p>
+    <div key={caption} className={`hud-caption hud-caption-${severity} ${className ?? ""}`} aria-live="polite">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] font-semibold tracking-[0.25em] uppercase opacity-80">
+          {CAPTION_LABEL[severity]}
+        </span>
+        {voice === "browser" && <span className="font-mono text-[9px] tracking-wider opacity-60">PHONE VOICE</span>}
+        {voice === "none" && (
+          <span className="font-mono text-[9px] tracking-wider text-[var(--hud-alarm)]">NO SOUND</span>
+        )}
+      </div>
+      <p className="mt-1 text-lg leading-snug font-semibold text-white">“{caption}”</p>
+    </div>
   );
 }
+
+const CAPTION_LABEL: Record<Severity, string> = {
+  alarm: "▲ Alarm",
+  warning: "● Warning",
+  info: "◆ Echo",
+  clear: "✓ Path clear",
+};
