@@ -12,6 +12,8 @@ export type Warning = {
   object: string;
   direction?: Direction;
   distance?: Distance;
+  // About how many steps away, for near things when it can be measured.
+  steps?: number;
   guidance?: Guidance;
   // Urgent warnings sound the alarm tone first and say "Stop."
   urgent?: boolean;
@@ -26,7 +28,10 @@ export type Description = {
   text: string;
 };
 
-export type Announcement = Warning | Description;
+// "Keep walking.": nothing is in the way. Never "clear" or "safe".
+export type Clear = { kind: "clear" };
+
+export type Announcement = Warning | Description | Clear;
 
 // One spoken piece. Warnings are said as the object, then the direction to
 // take, each cached on its own so the short commands are always ready.
@@ -40,7 +45,10 @@ const VOICE = {
   warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 400 },
   command: { style: "firm and clear, a short instruction", maxWaitMs: 400 },
   description: { style: "calm, clear and even", maxWaitMs: 4000 },
+  clear: { style: "calm and steady, quietly encouraging", maxWaitMs: 400 },
 };
+
+export const KEEP_WALKING: Segment = { text: "Keep walking.", ...VOICE.clear };
 
 // Where the thing is, in the words a guide would use.
 // Ground changes avoid "a step, a few steps ahead".
@@ -55,6 +63,11 @@ const PLACE: Record<Direction, Record<Distance, string>> = {
   left: { close: "just to your left", near: "on your left", far: "off to your left" },
   right: { close: "just to your right", near: "on your right", far: "off to your right" },
 };
+
+// "about 4 steps ahead", "on your left, about 3 steps".
+function stepsPlace(direction: Direction, steps: number): string {
+  return direction === "ahead" ? `about ${steps} steps ahead` : `on your ${direction}, about ${steps} steps`;
+}
 
 // Firm, short instructions. Close or urgent things get "step", the rest "bear".
 function command(g: Guidance, close: boolean): string {
@@ -89,6 +102,7 @@ export function commandSegments(): Segment[] {
 // ["Stop. Person right in front of you.", "Step right."].
 export function toSegments(a: Announcement): Segment[] {
   if (a.kind === "description") return [{ text: a.text, ...VOICE.description }];
+  if (a.kind === "clear") return [KEEP_WALKING];
 
   const object = a.object.charAt(0).toUpperCase() + a.object.slice(1);
   const direction = a.direction ?? "ahead";
@@ -97,7 +111,11 @@ export function toSegments(a: Announcement): Segment[] {
   if (a.urgent) {
     segments.push({ text: `Stop. ${object} ${PLACE[direction].close}.`, ...VOICE.alarm });
   } else {
-    const place = a.ground ? GROUND_PLACE[a.distance ?? "near"] : PLACE[direction][a.distance ?? "near"];
+    const place = a.steps
+      ? stepsPlace(direction, a.steps)
+      : a.ground
+        ? GROUND_PLACE[a.distance ?? "near"]
+        : PLACE[direction][a.distance ?? "near"];
     const text = a.reminder ? `${object} still ${place}.` : `${object}, ${place}.`;
     segments.push({ text, ...VOICE.warning });
   }
