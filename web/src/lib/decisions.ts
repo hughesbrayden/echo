@@ -333,6 +333,10 @@ const GO_AROUND = new Set<Answers["subject"]>([
   "other_obstacle",
 ]);
 
+// Things that move out of the way, so waiting helps. For a pole or a table
+// with no clear way past, Echo names it and says nothing more.
+const MOVES = new Set<Answers["subject"]>(["person", "bicycle", "vehicle"]);
+
 // Which way to go. Only for something in the path that is near or close, or
 // something beside the wearer that is close enough to brush. Never claims the
 // way is clear: it points to the side with more room.
@@ -345,7 +349,9 @@ function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance |
   }
   if (distance === "far" && !urgent) return undefined;
   if (a.room_left === null || a.room_right === null) return undefined;
-  if (Math.max(a.room_left, a.room_right) < THRESHOLDS.roomMin) return close ? "wait" : undefined;
+  if (Math.max(a.room_left, a.room_right) < THRESHOLDS.roomMin) {
+    return close && MOVES.has(a.subject) ? "wait" : undefined;
+  }
   return a.room_left >= a.room_right ? "left" : "right";
 }
 

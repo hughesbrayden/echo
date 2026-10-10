@@ -1,7 +1,7 @@
 // The one tone Echo has, and it means stop now. Built with Web Audio so there
 // are no sound files to load.
 
-import { audioContext, unlockAudio } from "@/lib/audio";
+import { audioContext, ensureAudioRunning, sleep } from "@/lib/audio";
 
 // Two quick falling chimes: urgent enough to cut through, soft enough not to
 // grate. Sine waves with a fast attack and gentle decay, no hard edges.
@@ -12,9 +12,10 @@ const NOTES = [
 const NOTE_SEC = 0.22;
 const VOLUME = 0.3;
 
-// Plays the alarm and resolves when it ends.
-export function playAlarm(): Promise<void> {
-  unlockAudio();
+// Plays the alarm and resolves when it ends. If audio can't run, it resolves
+// at once so the spoken words still follow; it never hangs.
+export async function playAlarm(): Promise<void> {
+  if (!(await ensureAudioRunning())) return;
   const audio = audioContext();
   const t0 = audio.currentTime + 0.01;
 
@@ -38,5 +39,9 @@ export function playAlarm(): Promise<void> {
     last = osc;
   }
 
-  return new Promise((resolve) => (last!.onended = () => resolve()));
+  const durationMs = (NOTES[NOTES.length - 1].at + NOTE_SEC) * 1000;
+  await Promise.race([
+    new Promise<void>((resolve) => (last!.onended = () => resolve())),
+    sleep(durationMs + 300),
+  ]);
 }

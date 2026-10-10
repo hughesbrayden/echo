@@ -1,7 +1,7 @@
 // Speaks text with Gemini TTS via /api/speak, falling back to the browser's
 // built-in voice if the call fails. Only one thing plays at a time.
 
-import { audioContext } from "@/lib/audio";
+import { audioContext, ensureAudioRunning, sleep } from "@/lib/audio";
 
 // Canned phrases like "Stop. Person ahead." repeat, so keep their audio.
 // Requests in flight are shared, so a preload and a speak never both fetch.
@@ -19,37 +19,51 @@ export function stopSpeaking() {
   generation++;
   current?.stop();
   current = null;
-  window.speechSynthesis?.cancel();
+  const synth = window.speechSynthesis;
+  if (synth?.speaking || synth?.pending) synth.cancel();
 }
+
+// Which voice said it, so the screen can show when sound failed.
+export type Voice = "gemini" | "browser" | "none" | "skipped";
 
 export async function speak(
   text: string,
   style?: string,
   maxWaitMs = DEFAULT_MAX_WAIT_MS,
-): Promise<void> {
+): Promise<Voice> {
   const mine = ++generation;
   try {
     const buffer = await withTimeout(synthesize(text, style), maxWaitMs);
-    if (mine !== generation) return;
+    if (mine !== generation) return "skipped";
     stopSpeaking();
     await play(buffer);
+    return "gemini";
   } catch (e) {
-    if (mine !== generation) return;
-    console.warn("Gemini TTS failed or was too slow, using browser voice", e);
-    await speakWithBrowser(text);
+    if (mine !== generation) return "skipped";
+    console.warn("Gemini audio unavailable, using browser voice", e);
+    return (await speakWithBrowser(text)) ? "browser" : "none";
   }
 }
 
-// Fetches audio ahead of time so these phrases play without waiting.
-// Stops at the first failure, e.g. when no Gemini key is set.
+// Fetches audio ahead of time so these phrases play without waiting, a few
+// at a time and in the order given. Stops at the first failure, e.g. when no
+// Gemini key is set.
+const PRELOAD_CONCURRENCY = 4;
+
 export async function preload(phrases: { text: string; style?: string }[]) {
-  for (const { text, style } of phrases) {
-    try {
-      await synthesize(text, style);
-    } catch {
-      return;
+  const queue = [...phrases];
+  let failed = false;
+  const worker = async () => {
+    while (!failed && queue.length) {
+      const { text, style } = queue.shift()!;
+      try {
+        await synthesize(text, style);
+      } catch {
+        failed = true;
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, worker));
 }
 
 function synthesize(text: string, style?: string): Promise<AudioBuffer> {
@@ -90,28 +104,47 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-function play(buffer: AudioBuffer): Promise<void> {
+// Plays decoded audio. Throws if Web Audio can't run, so the caller falls
+// back to the browser voice; resolves after the clip even if "ended" never
+// fires, so a stalled clip can't freeze what comes after it.
+async function play(buffer: AudioBuffer): Promise<void> {
+  if (!(await ensureAudioRunning())) throw new Error("audio is paused");
   const audio = audioContext();
   const source = audio.createBufferSource();
   source.buffer = buffer;
   source.connect(audio.destination);
   current = source;
-  return new Promise((resolve) => {
-    source.onended = () => {
-      if (current === source) current = null;
-      resolve();
-    };
-    source.start();
-  });
+  await Promise.race([
+    new Promise<void>((resolve) => (source.onended = () => resolve())),
+    sleep(buffer.duration * 1000 + 500),
+  ]);
+  if (current === source) current = null;
 }
 
-function speakWithBrowser(text: string): Promise<void> {
+// Kept at module level: some browsers drop an utterance that gets garbage
+// collected before it finishes, and never fire its end event.
+let utterance: SpeechSynthesisUtterance | null = null;
+
+// Resolves true once the browser voice has spoken, false if it never started.
+// Never hangs.
+async function speakWithBrowser(text: string): Promise<boolean> {
   const synth = window.speechSynthesis;
-  if (!synth) return Promise.resolve();
-  synth.cancel();
-  return new Promise((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = utterance.onerror = () => resolve();
-    synth.speak(utterance);
+  if (!synth) return false;
+  // Safari silently drops an utterance queued right after cancel().
+  if (synth.speaking || synth.pending) {
+    synth.cancel();
+    await sleep(60);
+  }
+  const mine = new SpeechSynthesisUtterance(text);
+  utterance = mine;
+  let started = false;
+  const done = new Promise<void>((resolve) => {
+    mine.onstart = () => (started = true);
+    mine.onend = mine.onerror = () => resolve();
   });
+  synth.speak(mine);
+  // A rough upper bound on how long the phrase takes to say.
+  await Promise.race([done, sleep(Math.min(1500 + text.length * 90, 8000))]);
+  if (utterance === mine) utterance = null;
+  return started;
 }
