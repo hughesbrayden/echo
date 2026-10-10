@@ -59,7 +59,7 @@ const HISTORY_KEEP_MS = 8000;
 // Its spoken updates wait this long after anything else was said, and this
 // long after the previous update.
 const UPDATE_AFTER_SPEECH_MS = 3000;
-const UPDATE_GAP_MS = 15_000;
+const UPDATE_GAP_MS = 30_000;
 // The wearer's eye height is remembered on this device.
 const EYE_HEIGHT_KEY = "echo.eyeHeightCm";
 const DEFAULT_EYE_HEIGHT_CM = Math.round(DEFAULT_EYE_HEIGHT_M * 100);
