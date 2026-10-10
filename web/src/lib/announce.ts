@@ -5,7 +5,7 @@ export type Direction = "left" | "ahead" | "right";
 export type Distance = "close" | "near" | "far";
 // Which way to go: around an object on that side, keep away from something
 // beside the wearer, or wait for a person or vehicle with no clear way around.
-export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait";
+export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait" | "slow";
 
 export type Warning = {
   kind: "warning";
@@ -17,6 +17,8 @@ export type Warning = {
   urgent?: boolean;
   // A repeat about something already mentioned: "Chair still ahead."
   reminder?: boolean;
+  // A height change in the ground (ramp, step, curb, stairs), not an object.
+  ground?: boolean;
 };
 
 export type Description = {
@@ -41,6 +43,13 @@ const VOICE = {
 };
 
 // Where the thing is, in the words a guide would use.
+// Ground changes avoid "a step, a few steps ahead".
+const GROUND_PLACE: Record<Distance, string> = {
+  close: "right in front of you",
+  near: "just ahead",
+  far: "up ahead",
+};
+
 const PLACE: Record<Direction, Record<Distance, string>> = {
   ahead: { close: "right in front of you", near: "a few steps ahead", far: "up ahead" },
   left: { close: "just to your left", near: "on your left", far: "off to your left" },
@@ -60,13 +69,15 @@ function command(g: Guidance, close: boolean): string {
       return "Keep right.";
     case "wait":
       return "Wait.";
+    case "slow":
+      return "Slow down.";
   }
 }
 
 // Every command Echo can give, so the phone can preload them.
 export function commandSegments(): Segment[] {
   const texts = new Set<string>();
-  for (const g of ["left", "right", "keep_left", "keep_right", "wait"] as const) {
+  for (const g of ["left", "right", "keep_left", "keep_right", "wait", "slow"] as const) {
     texts.add(command(g, true));
     texts.add(command(g, false));
   }
@@ -86,7 +97,7 @@ export function toSegments(a: Announcement): Segment[] {
   if (a.urgent) {
     segments.push({ text: `Stop. ${object} ${PLACE[direction].close}.`, ...VOICE.alarm });
   } else {
-    const place = PLACE[direction][a.distance ?? "near"];
+    const place = a.ground ? GROUND_PLACE[a.distance ?? "near"] : PLACE[direction][a.distance ?? "near"];
     const text = a.reminder ? `${object} still ${place}.` : `${object}, ${place}.`;
     segments.push({ text, ...VOICE.warning });
   }

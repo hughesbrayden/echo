@@ -282,7 +282,8 @@ export default function Camera() {
             hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
             {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · dist{" "}
             {answers.distance.toFixed(1)}
-            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`} · api{" "}
+            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`}
+            {answers.ground_change >= 0.5 && ` · ${answers.ground_kind} ${answers.ground_change.toFixed(2)}`} · api{" "}
             {answers.latencyMs} ms
             {answers.stub && " · stub"}
           </p>
