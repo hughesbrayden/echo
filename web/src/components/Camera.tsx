@@ -5,7 +5,7 @@ import type { FrameResponse } from "@/app/api/frame/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
 import { AroundYou, Details, EchoMark, FocusHalo, StopGlow, TopBar } from "@/components/Hud";
-import { KEEP_WALKING, commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
+import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -16,11 +16,11 @@ import { DEFAULT_EYE_HEIGHT_M, cameraSetup, type CameraSetup } from "@/lib/geome
 const TESTS: { label: string; announcement: Announcement }[] = [
   {
     label: "Heads up",
-    announcement: { kind: "warning", object: "chair", direction: "ahead", distance: "near", guidance: "left" },
+    announcement: { kind: "warning", advice: "course", object: "chair", direction: "ahead", distance: "near", guidance: "left" },
   },
   {
     label: "Stop",
-    announcement: { kind: "warning", object: "person", direction: "ahead", urgent: true, guidance: "right" },
+    announcement: { kind: "warning", advice: "stop", object: "person", direction: "ahead", urgent: true, guidance: "right" },
   },
   {
     label: "Describe",
@@ -36,8 +36,11 @@ const TESTS: { label: string; announcement: Announcement }[] = [
 const FRAME_INTERVAL_MS = 500;
 const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
-// Echo forgets what it last spoke about after this long.
-const REFERENCE_MAX_AGE_MS = 90_000;
+// A frame from this long before the newest one goes along too, so the model
+// sees motion over the same gap every time, whatever the API latency. Frames
+// are kept every SNAPSHOT_MS to pick from.
+const PREVIOUS_GAP_MS = 500;
+const SNAPSHOT_MS = 125;
 // How far back the spoken log reaches.
 const RECENT_MAX_AGE_MS = 120_000;
 // The background narrator runs this long after its previous call finishes,
@@ -47,10 +50,6 @@ const NARRATE_FRAME_SPACING_MS = 1500;
 const NARRATE_FRAMES = 3;
 // How much recent video and motion to keep for it.
 const HISTORY_KEEP_MS = 8000;
-// Its spoken updates wait this long after anything else was said, and this
-// long after the previous update.
-const UPDATE_AFTER_SPEECH_MS = 3000;
-const UPDATE_GAP_MS = 30_000;
 // The wearer's eye height is remembered on this device.
 const EYE_HEIGHT_KEY = "echo.eyeHeightCm";
 const DEFAULT_EYE_HEIGHT_CM = Math.round(DEFAULT_EYE_HEIGHT_M * 100);
@@ -65,14 +64,18 @@ export default function Camera() {
   // Bumped on every start and stop so a loop from an earlier run ends.
   const loopRef = useRef(0);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string; guided: boolean }[]>([]);
+  const saidRef = useRef<
+    { text: string; at: number; urgent: boolean; advice?: Advice; key?: string; guided: boolean }[]
+  >([]);
+  const snapshotsRef = useRef<{ blob: Blob; at: number }[]>([]);
+  const snapshotTimerRef = useRef<number | null>(null);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
   // Recent frames and motion for the narrator, and its last two results.
   const framesRef = useRef<{ blob: Blob; at: number }[]>([]);
   const motionLogRef = useRef<(Omit<MotionSample, "secondsAgo"> & { at: number })[]>([]);
   const narrationsRef = useRef<{ narration: Narration; at: number }[]>([]);
-  const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
+  const historyRef = useRef<{ stop: number; distance: number; gate: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +128,7 @@ export default function Camera() {
     // Every alarm phrase and command must be ready before Echo starts
     // watching, so a warning never waits on the network. Loads while the
     // camera starts.
-    const phrases = [KEEP_WALKING, ...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
+    const phrases = [...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
     setVoiceProgress({ loaded: 0, total: phrases.length });
     const voiceReady = preload(phrases, {
       pin: true,
@@ -169,6 +172,7 @@ export default function Camera() {
         motionRef.current.start();
       }
 
+      snapshotTimerRef.current = window.setInterval(() => void takeSnapshot(), SNAPSHOT_MS);
       void frameLoop(run);
       void narrateLoop(run);
       setStatus("running");
@@ -195,6 +199,9 @@ export default function Camera() {
     framesRef.current = [];
     motionLogRef.current = [];
     narrationsRef.current = [];
+    if (snapshotTimerRef.current !== null) window.clearInterval(snapshotTimerRef.current);
+    snapshotTimerRef.current = null;
+    snapshotsRef.current = [];
     setNarration(null);
     setAnswers(null);
     setMotion(null);
@@ -207,8 +214,8 @@ export default function Camera() {
   // there is never a stale frame queued and no idle wait after a slow reply.
   // The slower background pass: every few seconds, a short run of frames
   // plus what was said and how the head moved, summarised by a reasoning
-  // model. Its summary rides along with every frame; its rare spoken updates
-  // only play when nothing else has been said recently.
+  // model. Its note rides along with every frame as background; it never
+  // speaks on its own.
   async function narrateLoop(loop: number) {
     await sleep(NARRATE_INTERVAL_MS);
     while (loop === loopRef.current) {
@@ -247,24 +254,10 @@ export default function Camera() {
       const data: { narration: Narration; latencyMs: number } = await res.json();
       narrationsRef.current = [...narrationsRef.current, { narration: data.narration, at: Date.now() }].slice(-2);
       setNarration(data);
-      maybeSayUpdate(data.narration.say);
     } catch (e) {
       // The narrator is a nice-to-have; the frame loop carries on without it.
       console.warn("Narrator failed", e);
     }
-  }
-
-  function maybeSayUpdate(say: string | null) {
-    if (!say) return;
-    const now = Date.now();
-    const said = saidRef.current;
-    const lastSpoke = Math.max(-Infinity, ...said.map((s) => s.at));
-    const lastUpdate = Math.max(-Infinity, ...said.filter((s) => s.key === "update").map((s) => s.at));
-    const lastAlarm = Math.max(-Infinity, ...said.filter((s) => s.urgent).map((s) => s.at));
-    if (now - lastSpoke < UPDATE_AFTER_SPEECH_MS || now - lastUpdate < UPDATE_GAP_MS) return;
-    if (now - lastAlarm < UPDATE_GAP_MS || motionLogRef.current.at(-1)?.turning) return;
-    said.push({ text: say, at: now, urgent: false, key: "update", guided: false });
-    announce({ kind: "description", text: say });
   }
 
   async function frameLoop(loop: number) {
@@ -300,6 +293,7 @@ export default function Camera() {
           text: s.text,
           secondsAgo: (now - s.at) / 1000,
           urgent: s.urgent,
+          advice: s.advice,
           guided: s.guided,
           key: s.key,
         })),
@@ -309,9 +303,9 @@ export default function Camera() {
       "history",
       JSON.stringify(
         historyRef.current.map((h) => ({
-          hazard_close: h.hazard_close,
-          urgency: h.urgency,
+          stop: h.stop,
           distance: h.distance,
+          gate: h.gate,
           secondsAgo: (now - h.at) / 1000,
         })),
       ),
@@ -329,18 +323,15 @@ export default function Camera() {
       );
     }
 
-    const reference = referenceRef.current;
-    if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {
-      form.append("reference", reference.blob, "reference.jpg");
-      form.append(
-        "referenceInfo",
-        JSON.stringify({
-          text: reference.text,
-          secondsAgo: (now - reference.at) / 1000,
-          mentions: reference.mentions,
-        }),
-      );
+    const previous = snapshotNear(now - PREVIOUS_GAP_MS);
+    if (previous) {
+      form.append("previous", previous.blob, "previous.jpg");
+      form.append("previousInfo", JSON.stringify({ secondsAgo: (now - previous.at) / 1000 }));
     }
+
+    // The frame from when Echo last spoke isn't sent: two images per call
+    // keeps latency down, and repeats are caught by phrase instead.
+    const reference = referenceRef.current;
 
     const startedAt = performance.now();
     try {
@@ -351,8 +342,9 @@ export default function Camera() {
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
       if (data.answers) {
-        const { hazard_close, urgency, distance } = data.answers;
-        historyRef.current = [...historyRef.current, { hazard_close, urgency, distance, at: now }].slice(-2);
+        const { stop, distance, course, footing, orient } = data.answers;
+        const gate = Math.max(course, footing, orient);
+        historyRef.current = [...historyRef.current, { stop, distance, gate, at: now }].slice(-2);
       }
       if (data.announcement) {
         const text = toPhrase(data.announcement);
@@ -360,6 +352,7 @@ export default function Camera() {
           text,
           at: Date.now(),
           urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
+          advice: data.announcement.kind === "warning" ? data.announcement.advice : undefined,
           key: announcementKey(data.announcement),
           guided: data.announcement.kind === "warning" && !!data.announcement.guidance,
         });
@@ -371,6 +364,23 @@ export default function Camera() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  // Keeps the last second of frames, so one from half a second ago is ready.
+  async function takeSnapshot() {
+    const blob = await captureFrame();
+    if (!blob) return;
+    const now = Date.now();
+    snapshotsRef.current = [...snapshotsRef.current, { blob, at: now }].filter((f) => now - f.at <= 1000);
+  }
+
+  // The kept frame closest to `at`, if one is within a snapshot interval.
+  function snapshotNear(at: number) {
+    let best: { blob: Blob; at: number } | null = null;
+    for (const f of snapshotsRef.current) {
+      if (!best || Math.abs(f.at - at) < Math.abs(best.at - at)) best = f;
+    }
+    return best && Math.abs(best.at - at) <= SNAPSHOT_MS ? best : null;
   }
 
   function captureFrame(): Promise<Blob | null> {

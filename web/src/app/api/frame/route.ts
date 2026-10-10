@@ -12,6 +12,7 @@ import {
   toAnnouncement,
   type Answers,
   type Past,
+  type Previous,
   type Recent,
   type NarrationContext,
   type Reference,
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
   let narration: NarrationContext | null;
   // Camera height, field of view and step length, for distances.
   let camera: CameraSetup | null;
+  // How old the frame from half a second ago is.
+  let previousInfo: Omit<Previous, "imageDataUrl"> | null;
   try {
     motion = parseJson<Motion | null>(form, "motion", null);
     recent = parseJson<Recent[]>(form, "recent", []);
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
     referenceInfo = parseJson<Omit<Reference, "imageDataUrl"> | null>(form, "referenceInfo", null);
     narration = parseJson<NarrationContext | null>(form, "narration", null);
     camera = parseJson<CameraSetup | null>(form, "camera", null);
+    previousInfo = parseJson<Omit<Previous, "imageDataUrl"> | null>(form, "previousInfo", null);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
   }
@@ -72,13 +76,20 @@ export async function POST(request: Request) {
       ? { ...referenceInfo, imageDataUrl: await toDataUrl(referenceFrame) }
       : null;
 
+  // A frame from half a second earlier, so the model can see what is moving.
+  const previousFrame = form.get("previous");
+  const previous: Previous | null =
+    previousInfo && previousFrame instanceof File && previousFrame.type.startsWith("image/")
+      ? { ...previousInfo, imageDataUrl: await toDataUrl(previousFrame) }
+      : null;
+
   const apiKey = process.env.OPENAI_API_KEY;
   let answers: Answers;
   try {
     if (!apiKey || process.env.ECHO_STUB === "1") {
       answers = stubAnswers(reference !== null);
     } else {
-      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, narration, camera);
+      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous, camera);
     }
   } catch (e) {
     // The phone skips this frame rather than speaking late.

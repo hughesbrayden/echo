@@ -11,15 +11,17 @@ export type Severity = "stop" | "caution" | "info" | "calm";
 
 export function severityOf(a: Announcement | null): Severity {
   if (!a) return "info";
-  if (a.kind === "clear") return "calm";
-  if (a.kind === "warning") return a.urgent ? "stop" : "caution";
+  if (a.kind === "warning") {
+    if (a.urgent) return "stop";
+    return a.advice === "orient" ? "info" : "caution";
+  }
   return "info";
 }
 
-// Urgency 0..3 as a colour.
-function urgencyTone(urgency: number): Severity {
-  if (urgency >= 2) return "stop";
-  if (urgency >= 1) return "caution";
+// The strongest gate as a colour.
+function gateTone(a: Answers): Severity {
+  if (a.stop >= 0.5) return "stop";
+  if (Math.max(a.course, a.footing) >= 0.5) return "caution";
   return "info";
 }
 
@@ -59,10 +61,10 @@ export function TopBar({ live, motion, demo }: { live: boolean; motion: Motion |
 
 // A soft glow on the thing Echo is paying attention to, with its name.
 export function FocusHalo({ answers }: { answers: Answers | null | undefined }) {
-  if (!answers || answers.subject === "other" || answers.hazard_close < 0.25) return null;
+  if (!answers || answers.subject === "other" || Math.max(answers.stop, answers.course, answers.footing, answers.orient) < 0.25) return null;
   const x = answers.direction === "left" ? 24 : answers.direction === "right" ? 76 : 50;
   const y = clamp(30 + answers.base_row * 10, 25, 72);
-  const tone = urgencyTone(answers.urgency);
+  const tone = gateTone(answers);
   const size = 90 + answers.distance * 30; // Closer things glow bigger.
   const name = answers.subject.replace(/_/g, " ");
 
@@ -85,24 +87,12 @@ export function FocusHalo({ answers }: { answers: Answers | null | undefined }) 
 // The narrator's running picture of where the wearer is.
 export function AroundYou({ narration }: { narration: { narration: Narration; latencyMs: number } | null }) {
   if (!narration) return null;
-  const { summary, path, ground } = narration.narration;
-  const pathLabel = path === "open" ? "Path looks open" : path === "obstructed" ? "Something in the way" : null;
+  const { summary, ground } = narration.narration;
   const groundLabel = ground === "going_up" ? "Going up" : ground === "going_down" ? "Going down" : null;
   return (
     <div className="echo-glass rounded-3xl px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-white/60">Around you</span>
-        {pathLabel && (
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              path === "open"
-                ? "bg-[var(--echo-calm)]/20 text-[var(--echo-calm)]"
-                : "bg-[var(--echo-caution)]/20 text-[var(--echo-caution)]"
-            }`}
-          >
-            {pathLabel}
-          </span>
-        )}
         {groundLabel && (
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/80">{groundLabel}</span>
         )}
@@ -134,11 +124,11 @@ export function Details({
 }) {
   const bars: { label: string; value: number }[] = answers
     ? [
-        { label: "Something close", value: answers.hazard_close },
-        { label: "Worth saying", value: answers.worth_saying },
-        { label: "Urgency", value: answers.urgency / 3 },
+        { label: "Stop", value: answers.stop },
+        { label: "Course", value: answers.course },
+        { label: "Footing", value: answers.footing },
+        { label: "Orient", value: answers.orient },
         { label: "Nearness", value: answers.distance / 2 },
-        { label: "Ground change", value: answers.ground_change },
       ]
     : [];
   return (

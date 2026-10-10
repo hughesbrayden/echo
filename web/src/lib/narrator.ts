@@ -1,7 +1,9 @@
 // A slower reasoning pass that runs beside the per-frame decisions. Every few
 // seconds it looks at a short run of frames plus what Echo said and how the
-// head moved, and keeps a running summary of what is going on. The fast
-// decision model is stateless; this summary is its memory.
+// head moved, and writes a short ambient note: the kind of place, what the
+// wearer is doing, and what Echo has already told them. The fast decision
+// model is stateless; this note is its memory. It never speaks on its own and
+// never gives positions: the image in each decision always wins.
 //
 // decide() is called on the server only; the phone imports the types.
 
@@ -14,15 +16,11 @@ const REASONING_EFFORT = "low";
 export type GroundTrend = "level" | "going_up" | "going_down" | "unknown";
 
 export type Narration = {
-  // One or two short sentences, second person: where the wearer is and what
-  // is around them.
+  // One or two plain sentences: the setting and what has been happening.
   summary: string;
-  path: "open" | "obstructed" | "unclear";
   // Whether the ground ahead or underfoot goes up or down, judged across
   // frames and head pitch rather than from one frame.
   ground: GroundTrend;
-  // A short spoken update the fast warnings wouldn't give, or null.
-  say: string | null;
 };
 
 // One sample of the motion log the phone keeps, oldest first.
@@ -47,17 +45,12 @@ export type NarrateInput = {
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "path", "ground", "say"],
+  required: ["summary", "ground"],
   properties: {
     summary: {
       type: "string",
       description:
-        "One or two short sentences in second person: where the wearer is and what is around them, carrying forward what is still true from the previous summary.",
-    },
-    path: {
-      type: "string",
-      enum: ["open", "obstructed", "unclear"],
-      description: "The walking path ahead in the newest frame.",
+        "One or two plain sentences, at most about 40 words: the kind of place, how busy it is, what the wearer seems to be doing, and what Echo has already told them that still applies. No exact positions or distances.",
     },
     ground: {
       type: "string",
@@ -65,26 +58,25 @@ const SCHEMA = {
       description:
         "Whether the ground ahead or underfoot goes up or down (ramp, steps, curb, stairs). Use the frames over time and the camera pitch log. 'unknown' unless the evidence agrees.",
     },
-    say: {
-      type: ["string", "null"],
-      description:
-        "At most 10 words to say aloud now, only if it adds something useful that Echo has not said: the route turns, a door or crossing is coming up, the setting changed. Otherwise null.",
-    },
   },
 };
 
 const INSTRUCTIONS = [
-  "You keep track of a walk for Echo, a navigation aid for a blind pedestrian wearing a head-mounted camera.",
-  "A fast model already warns about obstacles frame by frame. Your job is the bigger picture: where they are, what has changed, and what is coming up.",
-  "Never say a path is clear or safe. Keep everything brief. When unsure, say less and use 'unknown' or null.",
-  "Left and right are from the camera's view. Camera pitch is degrees from level: negative looks down.",
+  "You are the background awareness for Echo, a navigation aid worn as camera glasses by a blind person.",
+  "A separate fast model looks at each new frame and decides whether Echo should speak, but it forgets everything between frames. Your note is how it knows where the wearer is and what has been happening.",
+  "You'll get a few recent frames (oldest first), how the wearer has been moving, what Echo has said aloud recently, and your previous note.",
+  "Write a fresh note that holds what a sighted companion walking alongside would keep in mind: the kind of place, how busy it is, what the wearer seems to be doing, and what Echo has already told them that still applies.",
+  "Think it through however you like. The note itself should be one or two plain sentences.",
+  "The fast model always trusts the current image over your note, so leave out exact positions and distances, and don't guess at what you can't see. If the place has changed, start fresh rather than carrying old details forward.",
+  "Also judge whether the ground ahead or underfoot goes up or down, using the frames over time and the camera pitch; say 'unknown' unless the evidence agrees.",
+  "Camera pitch is degrees from level: negative looks down.",
 ].join(" ");
 
 function describe(input: NarrateInput): string {
   const lines: string[] = [];
   lines.push(
     input.previous
-      ? `Previous summary: ${input.previous.summary} (ground: ${input.previous.ground}).`
+      ? `Your previous note: ${input.previous.summary} (ground: ${input.previous.ground}).`
       : "This is the start of the walk.",
   );
   lines.push(
