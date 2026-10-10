@@ -57,6 +57,15 @@ The decision model is fast but remembers nothing. Beside it, every 4 s the phone
 
 The phone reports camera pitch (from gravity) and head direction relative to the walking direction (gyro yaw, re-centred while walking straight). While the camera looks up, ground warnings are skipped; while the head is turned more than 35° from the walking direction, go-around commands are skipped.
 
+## Distance from geometry
+
+The camera sits at the wearer's eye height (set on the start screen, default 160 cm) and the motion sensor gives its tilt, so a point on the ground at a known row of the frame is at a known distance: `eye height / tan(angle below level)`. Two score questions, `base_row` and `ground_row`, ask where the main thing and the height change meet the ground (from "above middle" to "below frame"); [`web/src/lib/geometry.ts`](../web/src/lib/geometry.ts) turns that into metres. Step counting from acceleration peaks gives cadence, and cadence × step length (about 0.45 × eye height) gives walking speed.
+
+- Close is within 1.5 m or 1.5 s of walking; near is within 4 m. When metres aren't available (no tilt, row at the horizon), the model's own far/near/close is used.
+- Near things are said in steps: "Chair, about 4 steps ahead. Bear left."
+- Both models get the geometry in words ("tilted 20° down; the bottom edge of the frame shows ground about 1.2 m ahead, the middle about 4.4 m") and the walking speed.
+- With the head level, the bottom of the frame is about 2.5 m ahead, so anything closer has its base cut off; "below frame" covers that.
+
 ## What to test
 
 Record walks, label 100 to 200 frames as "should speak" or "stay quiet", and replay them through each prompt version. Score every version on hazards caught, false alarms, and time to first sound.
@@ -105,7 +114,7 @@ The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" be
 The phone posts each frame to `POST /api/frame` (multipart) and the server replies with what to do. Defined in [`web/src/app/api/frame/route.ts`](../web/src/app/api/frame/route.ts).
 
 ```
-in:  frame (JPEG), motion (JSON: walking, turning, yaw, pitch, headOffset), narration (JSON: summary, secondsAgo, groundDirection), recent (JSON: [{ text, secondsAgo, urgent, key }]),
+in:  frame (JPEG), motion (JSON: walking, turning, yaw, pitch, headOffset, cadence), camera (JSON: eyeHeightM, vfovDeg, stepLengthM), narration (JSON: summary, secondsAgo, groundDirection), recent (JSON: [{ text, secondsAgo, urgent, key }]),
      history (JSON: last 2 frames' hazard_close, urgency, distance), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
 out: { announcement: { kind: "warning", object, direction, distance, guidance?, urgent?, reminder? } | null, sameObject, answers: { hazard_close, worth_saying, urgency, subject, direction, distance, same_as_last, room_left, room_right, ground_change, ground_kind, ground_distance, latencyMs, stub } }
 ```

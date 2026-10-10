@@ -2,6 +2,7 @@
 // The phone calls this every few seconds, separately from /api/frame.
 
 import type { Recent } from "@/lib/decisions";
+import type { CameraSetup } from "@/lib/geometry";
 import { narrate, type MotionSample, type Narration } from "@/lib/narrator";
 
 // Sit close to OpenAI to cut a network hop.
@@ -26,11 +27,13 @@ export async function POST(request: Request) {
   let previous: Narration | null;
   let recent: Recent[];
   let motionLog: MotionSample[];
+  let camera: CameraSetup | null;
   try {
     ages = parseJson<number[]>(form, "frameAges", []);
     previous = parseJson<Narration | null>(form, "previous", null);
     recent = parseJson<Recent[]>(form, "recent", []);
     motionLog = parseJson<MotionSample[]>(form, "motionLog", []);
+    camera = parseJson<CameraSetup | null>(form, "camera", null);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
   }
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now();
   try {
-    const narration = await narrate({ frames, previous, recent, motionLog }, apiKey);
+    const narration = await narrate({ frames, previous, recent, motionLog, camera }, apiKey);
     return Response.json({ narration, latencyMs: Date.now() - startedAt });
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 502 });

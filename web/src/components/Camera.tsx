@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
@@ -9,6 +9,7 @@ import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
 import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motion";
+import { DEFAULT_EYE_HEIGHT_M, cameraSetup, type CameraSetup } from "@/lib/geometry";
 
 // Sample announcements for the test buttons.
 const TESTS: { label: string; announcement: Announcement }[] = [
@@ -49,6 +50,9 @@ const HISTORY_KEEP_MS = 8000;
 // long after the previous update.
 const UPDATE_AFTER_SPEECH_MS = 3000;
 const UPDATE_GAP_MS = 15_000;
+// The wearer's eye height is remembered on this device.
+const EYE_HEIGHT_KEY = "echo.eyeHeightCm";
+const DEFAULT_EYE_HEIGHT_CM = Math.round(DEFAULT_EYE_HEIGHT_M * 100);
 
 type Status = "idle" | "starting" | "running" | "error";
 
@@ -81,6 +85,21 @@ export default function Camera() {
   // Alarm phrases and commands loading at Start; Echo waits for them.
   const [voiceProgress, setVoiceProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  // Camera height above the ground, for distances. Set before Start and
+  // remembered on this device; edits win when storage is blocked.
+  const savedEyeHeightCm = useSyncExternalStore(noSubscribe, readEyeHeightCm, () => DEFAULT_EYE_HEIGHT_CM);
+  const [editedEyeHeightCm, setEditedEyeHeightCm] = useState<number | null>(null);
+  const eyeHeightCm = editedEyeHeightCm ?? savedEyeHeightCm;
+  const cameraRef = useRef<CameraSetup | null>(null);
+
+  function changeEyeHeight(cm: number) {
+    setEditedEyeHeightCm(cm);
+    try {
+      localStorage.setItem(EYE_HEIGHT_KEY, String(cm));
+    } catch {
+      // Storage blocked: it just won't be remembered.
+    }
+  }
 
   useEffect(() => stop, []);
 
@@ -192,6 +211,7 @@ export default function Camera() {
     const form = new FormData();
     frames.forEach((f, i) => form.append("frames", f.blob, `frame${i}.jpg`));
     form.append("frameAges", JSON.stringify(frames.map((f) => (now - f.at) / 1000)));
+    if (cameraRef.current) form.append("camera", JSON.stringify(cameraRef.current));
     const previous = narrationsRef.current.at(-1)?.narration;
     if (previous) form.append("previous", JSON.stringify(previous));
     form.append(
@@ -248,12 +268,13 @@ export default function Camera() {
 
     const form = new FormData();
     form.append("frame", blob, "frame.jpg");
+    if (cameraRef.current) form.append("camera", JSON.stringify(cameraRef.current));
     const frameMotion = motionRef.current?.take();
     if (frameMotion) {
       form.append("motion", JSON.stringify(frameMotion));
       setMotion(frameMotion);
-      const { pitch, headOffset, walking, turning } = frameMotion;
-      keepRecent(motionLogRef, { pitch, headOffset, walking, turning, at: Date.now() });
+      const { pitch, headOffset, walking, turning, cadence } = frameMotion;
+      keepRecent(motionLogRef, { pitch, headOffset, walking, turning, cadence, at: Date.now() });
     }
 
     const now = Date.now();
@@ -346,6 +367,7 @@ export default function Camera() {
     const scale = Math.min(1, FRAME_MAX_WIDTH / video.videoWidth);
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
+    cameraRef.current = cameraSetup(eyeHeightCm / 100, canvas.width, canvas.height);
     canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
     return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
   }
@@ -374,7 +396,8 @@ export default function Camera() {
         {running && motion && (
           <p className="font-mono text-sm">
             {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
-            {motion.yawRate}°/s · accel {motion.accelRms} · pitch {motion.pitch}° · head {motion.headOffset}°
+            {motion.yawRate}°/s · accel {motion.accelRms} · pitch {motion.pitch}° · head {motion.headOffset}° ·{" "}
+            {motion.cadence} steps/s
           </p>
         )}
         {running && answers && (
@@ -382,6 +405,7 @@ export default function Camera() {
             hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
             {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · dist{" "}
             {answers.distance.toFixed(1)}
+            {answers.meters !== null && ` · ${answers.meters} m`}
             {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`}
             {answers.ground_change >= 0.5 && ` · ${answers.ground_kind} ${answers.ground_change.toFixed(2)}`} · api{" "}
             {answers.latencyMs} ms
@@ -418,6 +442,24 @@ export default function Camera() {
             </button>
           ))}
         </div>
+        {status === "idle" || status === "error" ? (
+          <label className="flex items-center justify-between text-base">
+            Eye height
+            <span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={100}
+                max={220}
+                value={eyeHeightCm}
+                onChange={(e) => changeEyeHeight(Number(e.target.value))}
+                className="w-20 rounded-lg bg-white/10 px-2 py-1 text-right"
+                aria-label="Eye height in centimetres"
+              />{" "}
+              cm
+            </span>
+          </label>
+        ) : null}
         <button
           type="button"
           onClick={running ? stop : start}
@@ -467,4 +509,19 @@ function groundDirection(narrations: Narration[]): "up" | "down" | null {
   const [a, b] = narrations.slice(-2).map((n) => n.ground);
   if (a !== b) return null;
   return a === "going_up" ? "up" : a === "going_down" ? "down" : null;
+}
+
+function readEyeHeightCm(): number {
+  try {
+    const saved = Number(localStorage.getItem(EYE_HEIGHT_KEY));
+    if (saved >= 100 && saved <= 220) return saved;
+  } catch {
+    // Storage blocked: use the default.
+  }
+  return DEFAULT_EYE_HEIGHT_CM;
+}
+
+// The saved height only changes through this page, which tracks edits itself.
+function noSubscribe(): () => void {
+  return () => {};
 }

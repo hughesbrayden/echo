@@ -6,6 +6,7 @@
 // decide() runs on the server; the phone imports only the phrase helpers.
 
 import type { Announcement, Distance, Guidance, Warning } from "@/lib/announce";
+import { describeGeometry, groundDistanceM, type CameraSetup } from "@/lib/geometry";
 import type { Motion } from "@/lib/motion";
 
 const MODEL = "gpt-6-luna";
@@ -60,6 +61,15 @@ export type Answers = {
   ground_kind: (typeof GROUND_KINDS)[number];
   // 0..2, like distance: how far ahead the height change starts.
   ground_distance: number;
+  // 0..5, probability-weighted: where in the frame the main thing meets the
+  // ground (0 above the middle ... 4 bottom edge, 5 cut off below the frame),
+  // and where the height change starts.
+  base_row: number;
+  ground_row: number;
+  // Metres along the ground from those rows, the camera's height and its
+  // tilt. Null when the tilt is unknown or the row is at the horizon.
+  meters: number | null;
+  ground_meters: number | null;
   // Time spent waiting on the Decisions API.
   latencyMs: number;
   // True when the answers are fake because no API key is set.
@@ -122,6 +132,11 @@ export const THRESHOLDS = {
   // Distance score cut-offs for the spoken words.
   distanceClose: 1.5,
   distanceNear: 0.5,
+  // When metres are known (camera height and tilt), these replace the model's
+  // own far/near/close: close is within about two steps or 1.5 s of walking.
+  closeM: 1.5,
+  nearM: 4,
+  closeSeconds: 1.5,
   // Below this on both sides, there is no clear way around.
   roomMin: 0.5,
   // Above this, the ground changes height ahead.
@@ -154,6 +169,26 @@ export const THRESHOLDS = {
 
 function overAlarmLine(a: { hazard_close: number; urgency: number }): boolean {
   return a.hazard_close >= THRESHOLDS.alarmHazard && a.urgency >= THRESHOLDS.alarmUrgency;
+}
+
+// Row answers: top to bottom of the frame. The last means the base is below
+// the bottom edge, i.e. closer than the ground the frame shows.
+const ROW_LEVELS = [
+  { label: "above middle", description: "Meets the ground above the middle of the frame", frac: 0.35 },
+  { label: "middle", description: "Meets the ground around the middle of the frame", frac: 0.5 },
+  { label: "lower middle", description: "Meets the ground between the middle and the bottom", frac: 0.65 },
+  { label: "near bottom", description: "Meets the ground close to the bottom of the frame", frac: 0.8 },
+  { label: "bottom edge", description: "Meets the ground right at the bottom edge", frac: 0.95 },
+  { label: "below frame", description: "Its base is cut off below the bottom of the frame", frac: 1 },
+];
+
+function rowQuestion(name: string, what: string) {
+  return {
+    type: "score",
+    name,
+    instructions: `How far down the frame ${what} meets the ground.`,
+    levels: ROW_LEVELS.map(({ label, description }) => ({ label, description })),
+  };
 }
 
 const QUESTIONS = [
@@ -236,19 +271,42 @@ const QUESTIONS = [
       { label: "close", description: "Within about 1 meter, a step or two" },
     ],
   },
+  rowQuestion("base_row", "the main thing worth mentioning"),
+  rowQuestion("ground_row", "the height change in the walking path starts where it"),
 ];
 
-function contextText(recent: Recent[], motion: Motion | null, narration: NarrationContext | null): string {
+// A probability-weighted row score (0..5) as a fraction down the frame.
+function rowFraction(score: number): number {
+  const i = Math.max(0, Math.min(ROW_LEVELS.length - 1, score));
+  const lo = Math.floor(i);
+  const hi = Math.min(lo + 1, ROW_LEVELS.length - 1);
+  return ROW_LEVELS[lo].frac + (ROW_LEVELS[hi].frac - ROW_LEVELS[lo].frac) * (i - lo);
+}
+
+function contextText(
+  recent: Recent[],
+  motion: Motion | null,
+  narration: NarrationContext | null,
+  camera: CameraSetup | null,
+): string {
   recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
   const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
-    const tilt = Math.abs(motion.pitch);
-    lines.push(
-      tilt < 5
-        ? "The camera points level."
-        : `The camera points ${tilt}° ${motion.pitch < 0 ? "down toward the ground" : "up above level"}.`,
-    );
+    if (camera) {
+      lines.push(describeGeometry(motion.pitch, camera));
+    } else {
+      const tilt = Math.abs(motion.pitch);
+      lines.push(
+        tilt < 5
+          ? "The camera points level."
+          : `The camera points ${tilt}° ${motion.pitch < 0 ? "down toward the ground" : "up above level"}.`,
+      );
+    }
+    if (camera && motion.cadence > 0) {
+      const speed = motion.cadence * camera.stepLengthM;
+      lines.push(`Walking at about ${speed.toFixed(1)} m/s (${motion.cadence} steps per second).`);
+    }
     if (Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg) {
       const side = motion.headOffset > 0 ? "left" : "right";
       lines.push(`The wearer is looking about ${Math.abs(motion.headOffset)}° to the ${side} of where they are walking.`);
@@ -285,6 +343,7 @@ export async function decide(
   apiKey: string,
   reference: Reference | null = null,
   narration: NarrationContext | null = null,
+  camera: CameraSetup | null = null,
 ): Promise<Answers> {
   const images = reference
     ? [
@@ -308,7 +367,7 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: contextText(recent, motion, narration) },
+            { type: "input_text", text: contextText(recent, motion, narration, camera) },
             ...images,
           ],
         },
@@ -348,6 +407,9 @@ export async function decide(
     ground_change: prob("ground_change"),
     ground_kind: pick("ground_kind", GROUND_KINDS, "step"),
     ground_distance: score("ground_distance"),
+    base_row: score("base_row"),
+    ground_row: score("ground_row"),
+    ...measure(score("base_row"), score("ground_row"), motion, camera),
     latencyMs,
     stub: false,
   };
@@ -364,6 +426,10 @@ export function stubAnswers(hasReference: boolean): Answers {
     ground_change: roll > 0.95 ? 0.9 : 0.05,
     ground_kind: "curb" as const,
     ground_distance: 1.2,
+    base_row: 3,
+    ground_row: 3,
+    meters: null,
+    ground_meters: null,
     latencyMs: 0,
     stub: true,
   };
@@ -390,10 +456,40 @@ const SUBJECT_OBJECTS: Record<Answers["subject"], string> = {
   other: "something",
 };
 
-function toDistance(score: number): Distance {
+// Metres to the main thing and to the height change, from where they meet
+// the ground in the frame.
+function measure(
+  baseRow: number,
+  groundRow: number,
+  motion: Motion | null,
+  camera: CameraSetup | null,
+): Pick<Answers, "meters" | "ground_meters"> {
+  if (!motion || !camera) return { meters: null, ground_meters: null };
+  const round = (m: number | null) => (m === null ? null : Math.round(m * 10) / 10);
+  return {
+    meters: round(groundDistanceM(rowFraction(baseRow), motion.pitch, camera)),
+    ground_meters: round(groundDistanceM(rowFraction(groundRow), motion.pitch, camera)),
+  };
+}
+
+// Far, near or close: from metres and walking speed when known (close within
+// about two steps or 1.5 s of walking), else from the model's own score.
+function toDistance(score: number, meters: number | null = null, speed = 0): Distance {
+  if (meters !== null) {
+    const seconds = speed > 0 ? meters / speed : Infinity;
+    if (meters <= THRESHOLDS.closeM || seconds <= THRESHOLDS.closeSeconds) return "close";
+    return meters <= THRESHOLDS.nearM ? "near" : "far";
+  }
   if (score >= THRESHOLDS.distanceClose) return "close";
   if (score >= THRESHOLDS.distanceNear) return "near";
   return "far";
+}
+
+// "About 4 steps" for near things, when metres and step length are known.
+function toSteps(distance: Distance, meters: number | null, camera: CameraSetup | null): number | undefined {
+  if (distance !== "near" || meters === null || !camera) return undefined;
+  const steps = Math.round(meters / camera.stepLengthM);
+  return steps >= 2 && steps <= 8 ? steps : undefined;
 }
 
 // Every alarm Echo can sound, so the phone can preload their audio.
@@ -473,9 +569,14 @@ const GROUND_OBJECT: Record<Answers["ground_kind"], Record<"up" | "down", string
   stairs: { up: "stairs going up", down: "stairs going down" },
 };
 
-function toGroundWarning(a: Answers, direction: "up" | "down" | null): Warning | null {
+function toGroundWarning(
+  a: Answers,
+  direction: "up" | "down" | null,
+  speed: number,
+  camera: CameraSetup | null,
+): Warning | null {
   if (a.ground_change < THRESHOLDS.groundChange) return null;
-  const distance = toDistance(a.ground_distance);
+  const distance = toDistance(a.ground_distance, a.ground_meters, speed);
   if (distance === "far") return null;
   const object = direction
     ? GROUND_OBJECT[a.ground_kind][direction]
@@ -483,7 +584,15 @@ function toGroundWarning(a: Answers, direction: "up" | "down" | null): Warning |
       ? "a step"
       : a.ground_kind;
   const slow = a.ground_kind !== "ramp";
-  return { kind: "warning", ground: true, object, direction: "ahead", distance, guidance: slow ? "slow" : undefined };
+  return {
+    kind: "warning",
+    ground: true,
+    object,
+    direction: "ahead",
+    distance,
+    steps: toSteps(distance, a.ground_meters, camera),
+    guidance: slow ? "slow" : undefined,
+  };
 }
 
 export function isSameObject(a: Answers): boolean {
@@ -502,15 +611,18 @@ export function toAnnouncement(
   motion: Motion | null,
   reference: Pick<Reference, "secondsAgo" | "mentions"> | null,
   narration: NarrationContext | null = null,
+  camera: CameraSetup | null = null,
 ): Announcement | null {
   const lookingUp = !!motion && motion.pitch > THRESHOLDS.lookingUpPitch;
   const lookingAway = !!motion && Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg;
-  const distance = toDistance(a.distance);
+  const speed = motion && camera ? motion.cadence * camera.stepLengthM : 0;
+  const distance = toDistance(a.distance, a.meters, speed);
   const warning: Warning = {
     kind: "warning",
     object: SUBJECT_OBJECTS[a.subject],
     direction: a.direction,
     distance,
+    steps: toSteps(distance, a.meters, camera),
     guidance: toGuidance(a, distance, false, lookingAway),
   };
   const alarm: Warning = { ...warning, urgent: true, guidance: toGuidance(a, distance, true, lookingAway) };
@@ -545,7 +657,7 @@ export function toAnnouncement(
 
   // Height changes come next: they matter while walking whatever else is in
   // view, and stay quiet for a while once said.
-  const ground = lookingUp ? null : toGroundWarning(a, freshNarration(narration)?.groundDirection ?? null);
+  const ground = lookingUp ? null : toGroundWarning(a, freshNarration(narration)?.groundDirection ?? null, speed, camera);
   if (ground) {
     const key = announcementKey(ground);
     const said = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.groundRepeatS);

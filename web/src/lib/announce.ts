@@ -12,6 +12,8 @@ export type Warning = {
   object: string;
   direction?: Direction;
   distance?: Distance;
+  // About how many steps away, for near things when it can be measured.
+  steps?: number;
   guidance?: Guidance;
   // Urgent warnings sound the alarm tone first and say "Stop."
   urgent?: boolean;
@@ -62,6 +64,11 @@ const PLACE: Record<Direction, Record<Distance, string>> = {
   right: { close: "just to your right", near: "on your right", far: "off to your right" },
 };
 
+// "about 4 steps ahead", "on your left, about 3 steps".
+function stepsPlace(direction: Direction, steps: number): string {
+  return direction === "ahead" ? `about ${steps} steps ahead` : `on your ${direction}, about ${steps} steps`;
+}
+
 // Firm, short instructions. Close or urgent things get "step", the rest "bear".
 function command(g: Guidance, close: boolean): string {
   switch (g) {
@@ -104,7 +111,11 @@ export function toSegments(a: Announcement): Segment[] {
   if (a.urgent) {
     segments.push({ text: `Stop. ${object} ${PLACE[direction].close}.`, ...VOICE.alarm });
   } else {
-    const place = a.ground ? GROUND_PLACE[a.distance ?? "near"] : PLACE[direction][a.distance ?? "near"];
+    const place = a.steps
+      ? stepsPlace(direction, a.steps)
+      : a.ground
+        ? GROUND_PLACE[a.distance ?? "near"]
+        : PLACE[direction][a.distance ?? "near"];
     const text = a.reminder ? `${object} still ${place}.` : `${object}, ${place}.`;
     segments.push({ text, ...VOICE.warning });
   }

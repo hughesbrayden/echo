@@ -6,6 +6,7 @@
 // decide() is called on the server only; the phone imports the types.
 
 import type { Recent } from "@/lib/decisions";
+import { describeGeometry, type CameraSetup } from "@/lib/geometry";
 
 const MODEL = "gpt-6-luna";
 const REASONING_EFFORT = "low";
@@ -31,6 +32,7 @@ export type MotionSample = {
   headOffset: number;
   walking: boolean;
   turning: boolean;
+  cadence: number;
 };
 
 export type NarrateInput = {
@@ -39,6 +41,7 @@ export type NarrateInput = {
   previous: Narration | null;
   recent: Recent[];
   motionLog: MotionSample[];
+  camera: CameraSetup | null;
 };
 
 const SCHEMA = {
@@ -102,6 +105,14 @@ function describe(input: NarrateInput): string {
           .join("; ") +
         ".",
     );
+  }
+  const latest = input.motionLog.at(-1);
+  if (latest && input.camera) {
+    lines.push(`Newest frame: ${describeGeometry(latest.pitch, input.camera)}`);
+    if (latest.cadence > 0) {
+      const speed = latest.cadence * input.camera.stepLengthM;
+      lines.push(`Walking at about ${speed.toFixed(1)} m/s; one step is about ${input.camera.stepLengthM} m.`);
+    }
   }
   lines.push(
     `The ${input.frames.length} frames below are oldest first, taken ` +

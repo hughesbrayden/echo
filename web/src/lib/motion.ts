@@ -19,6 +19,8 @@ export type Motion = {
   // Head direction minus walking direction, degrees: positive is looking to
   // the left. From integrated gyro yaw, re-centred while walking straight.
   headOffset: number;
+  // Steps per second over the last few seconds, from acceleration peaks.
+  cadence: number;
   samples: number;
 };
 
@@ -28,6 +30,12 @@ const TURNING_YAW_RATE = 30;
 // How fast the walking direction follows the head while walking straight
 // (per frame); slow enough that a glance aside doesn't move it.
 const WALK_HEADING_FOLLOW = 0.15;
+// A step shows as a peak in acceleration (gravity removed) above this,
+// at least this far after the previous one. Cadence counts steps over the
+// last few seconds.
+const STEP_PEAK = 1.2;
+const STEP_MIN_GAP_MS = 300;
+const CADENCE_WINDOW_MS = 4000;
 
 type MotionPermission = { requestPermission?: () => Promise<"granted" | "denied"> };
 
@@ -53,6 +61,10 @@ export class MotionTracker {
   private heading = 0;
   private walkHeading = 0;
   private lastTime: number | null = null;
+  // Last two acceleration magnitudes, to spot a peak, and recent step times.
+  private prevMag = 0;
+  private prevPrevMag = 0;
+  private steps: number[] = [];
 
   private onMotion = (e: DeviceMotionEvent) => {
     const yaw = e.rotationRate?.gamma ?? 0;
@@ -71,10 +83,20 @@ export class MotionTracker {
 
     const a = e.acceleration;
     if (a) {
-      this.accelSqSum += (a.x ?? 0) ** 2 + (a.y ?? 0) ** 2 + (a.z ?? 0) ** 2;
+      const sq = (a.x ?? 0) ** 2 + (a.y ?? 0) ** 2 + (a.z ?? 0) ** 2;
+      this.accelSqSum += sq;
+      this.countStep(Math.sqrt(sq), e.timeStamp);
     }
     this.samples++;
   };
+
+  // The previous sample is a step when it is a local peak above STEP_PEAK.
+  private countStep(mag: number, time: number) {
+    const peak = this.prevMag > STEP_PEAK && this.prevMag >= this.prevPrevMag && this.prevMag > mag;
+    if (peak && time - (this.steps.at(-1) ?? -Infinity) >= STEP_MIN_GAP_MS) this.steps.push(time);
+    this.prevPrevMag = this.prevMag;
+    this.prevMag = mag;
+  }
 
   start() {
     window.addEventListener("devicemotion", this.onMotion);
@@ -82,6 +104,15 @@ export class MotionTracker {
 
   stop() {
     window.removeEventListener("devicemotion", this.onMotion);
+  }
+
+  private cadence(): number {
+    const now = this.lastTime ?? 0;
+    this.steps = this.steps.filter((t) => now - t <= CADENCE_WINDOW_MS);
+    // Fewer than 3 steps isn't a walking rhythm.
+    if (this.steps.length < 3) return 0;
+    const span = (this.steps.at(-1)! - this.steps[0]) / 1000;
+    return Math.round(((this.steps.length - 1) / span) * 10) / 10;
   }
 
   // Returns the summary since the last call and starts a new window.
@@ -104,6 +135,7 @@ export class MotionTracker {
       turning,
       pitch: Math.round(pitchFromGravity(this.gravity.y, this.gravity.z)),
       headOffset: Math.round(this.heading - this.walkHeading),
+      cadence: this.cadence(),
       samples: this.samples,
     };
     this.yawSum = 0;
