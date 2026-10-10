@@ -2,8 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
-import { playAlarm, unlockAudio } from "@/lib/alarm";
+import Announcer from "@/components/Announcer";
+import { toPhrase, type Announcement } from "@/lib/announce";
+import { unlockAudio } from "@/lib/audio";
+import { stopSpeaking } from "@/lib/speech";
 import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motion";
+
+// Sample announcements for the test buttons.
+const TESTS: { label: string; announcement: Announcement }[] = [
+  { label: "Warning", announcement: { kind: "warning", object: "chair", direction: "ahead", distance: "close" } },
+  { label: "Alarm", announcement: { kind: "warning", object: "person", direction: "ahead", urgent: true } },
+  {
+    label: "Describe",
+    announcement: {
+      kind: "description",
+      text: "A hallway with a door on the left and a bench against the right wall.",
+    },
+  },
+];
 
 // How often to send a frame, and how wide to scale it before upload.
 const FRAME_INTERVAL_MS = 500;
@@ -26,7 +42,7 @@ export default function Camera() {
   const [sent, setSent] = useState(0);
   const [skipped, setSkipped] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [lastSaid, setLastSaid] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
   const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
@@ -62,8 +78,7 @@ export default function Camera() {
       video.srcObject = stream;
       await video.play();
 
-      // Speaking once inside the tap unlocks speech on iOS Safari.
-      speak("Echo on");
+      setAnnouncement({ kind: "description", text: "Echo on" });
 
       if (motionGranted) {
         motionRef.current = new MotionTracker();
@@ -86,7 +101,7 @@ export default function Camera() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    stopSpeaking();
     setStatus("idle");
   }
 
@@ -123,26 +138,15 @@ export default function Camera() {
       setLatencyMs(Math.round(performance.now() - startedAt));
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
-      if (data.say) saidRef.current.push({ text: data.say, at: Date.now() });
-      if (data.alarm) {
-        void alarm(data.say ?? "Stop.");
-      } else if (data.say) {
-        setLastSaid(data.say);
-        speak(data.say);
+      if (data.announcement) {
+        saidRef.current.push({ text: toPhrase(data.announcement), at: Date.now() });
+        setAnnouncement(data.announcement);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       inFlightRef.current = false;
     }
-  }
-
-  // The alarm cuts off anything being said, then speaks the canned phrase.
-  async function alarm(phrase: string) {
-    window.speechSynthesis?.cancel();
-    setLastSaid(phrase);
-    await playAlarm();
-    speak(phrase);
   }
 
   function captureFrame(): Promise<Blob | null> {
@@ -172,7 +176,6 @@ export default function Camera() {
 
       <div
         className="relative mt-auto flex flex-col gap-3 bg-black/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-        aria-live="polite"
       >
         {running && (
           <p className="font-mono text-sm">
@@ -195,18 +198,24 @@ export default function Camera() {
         {running && !motionAllowed && (
           <p className="text-sm text-yellow-300">Motion sensor unavailable or not allowed.</p>
         )}
-        {lastSaid && <p className="text-lg">“{lastSaid}”</p>}
+        <Announcer announcement={announcement} className="text-lg" />
         {error && <p className="text-sm text-red-400">{error}</p>}
 
-        {running && (
-          <button
-            type="button"
-            onClick={() => alarm("Stop. Test alarm.")}
-            className="h-12 w-full rounded-2xl border border-white/60 text-lg"
-          >
-            Test alarm
-          </button>
-        )}
+        <div className="grid grid-cols-3 gap-2">
+          {TESTS.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => {
+                unlockAudio();
+                setAnnouncement({ ...t.announcement });
+              }}
+              className="h-12 rounded-2xl border border-white/60 text-base"
+            >
+              Test {t.label.toLowerCase()}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={running ? stop : start}
@@ -218,11 +227,4 @@ export default function Camera() {
       </div>
     </main>
   );
-}
-
-function speak(text: string) {
-  const synth = window.speechSynthesis;
-  if (!synth) return;
-  synth.cancel();
-  synth.speak(new SpeechSynthesisUtterance(text));
 }
