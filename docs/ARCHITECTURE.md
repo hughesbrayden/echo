@@ -34,6 +34,7 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 | `subject` | choice | person, chair, table, bench, pole, trash can, stairs, curb, door, wall, bicycle, vehicle, sign, other obstacle, other |
 | `direction` | choice | left, ahead, right |
 | `distance` | score | far (over 3 m), near (1 to 3 m), close (under 1 m) |
+| `room_left`, `room_right` | predicate | Is there open floor to walk past the main thing on that side? Picks "Bear left" / "Step right", or "No clear way around. Wait." |
 | `same_as_last` | predicate | Is the main thing the same one Echo last spoke about? Asked only when the frame from that moment is sent as a second image. |
 
 **Routing:** high `hazard_close` plus `urgency` near stop sounds the alarm. A high `worth_saying` triggers words. Everything else is silence.
@@ -90,7 +91,7 @@ The phone posts each frame to `POST /api/frame` (multipart) and the server repli
 ```
 in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo, urgent, key }]),
      history (JSON: last 2 frames' hazard_close, urgency, distance), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
-out: { announcement: { kind: "warning", object, direction, urgent? } | null, sameObject, answers: { hazard_close, worth_saying, urgency, subject, direction, distance, same_as_last, latencyMs, stub } }
+out: { announcement: { kind: "warning", object, direction, distance, guidance?, urgent?, reminder? } | null, sameObject, answers: { hazard_close, worth_saying, urgency, subject, direction, distance, same_as_last, room_left, room_right, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.

@@ -5,7 +5,7 @@
 // The questions and thresholds are v0 guesses: tuning them is the main work.
 // decide() runs on the server; the phone imports only the phrase helpers.
 
-import type { Announcement, Distance, Warning } from "@/lib/announce";
+import type { Announcement, Distance, Guidance, Warning } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
 
 const MODEL = "gpt-6-luna";
@@ -47,6 +47,10 @@ export type Answers = {
   // 0..1: the main thing now is the one Echo last spoke about. Null when
   // there was no earlier frame to compare against.
   same_as_last: number | null;
+  // 0..1: there is room to walk past the main thing on its left / right.
+  // Null when the model declined to answer, e.g. no floor in view.
+  room_left: number | null;
+  room_right: number | null;
   // Time spent waiting on the Decisions API.
   latencyMs: number;
   // True when the answers are fake because no API key is set.
@@ -91,6 +95,8 @@ export const THRESHOLDS = {
   // Distance score cut-offs for the spoken words.
   distanceClose: 1.5,
   distanceNear: 0.5,
+  // Below this on both sides, there is no clear way around.
+  roomMin: 0.5,
   // Something still in view gets a spoken reminder after this long, doubling
   // each time up to the max, and only while the wearer is walking.
   reminderFirstS: 15,
@@ -148,6 +154,18 @@ const QUESTIONS = [
       { label: "near", description: "About 1 to 3 meters away" },
       { label: "close", description: "Within about 1 meter, a step or two" },
     ],
+  },
+  {
+    type: "predicate",
+    name: "room_left",
+    instructions:
+      "There is open floor to the left of the main thing in the walking path, wide enough for the wearer to walk past it on that side.",
+  },
+  {
+    type: "predicate",
+    name: "room_right",
+    instructions:
+      "There is open floor to the right of the main thing in the walking path, wide enough for the wearer to walk past it on that side.",
   },
 ];
 
@@ -221,10 +239,11 @@ export async function decide(
 
   const { answers } = (await res.json()) as { answers: RawAnswer[] };
   const byName = new Map(answers.map((a) => [a.name, a]));
-  const prob = (name: string) => {
+  const probOrNull = (name: string) => {
     const a = byName.get(name);
-    return a?.type === "predicate" ? a.probability : 0;
+    return a?.type === "predicate" ? a.probability : null;
   };
+  const prob = (name: string) => probOrNull(name) ?? 0;
   const pick = <T extends string>(name: string, allowed: readonly T[], fallback: T): T => {
     const a = byName.get(name);
     return a?.type === "choice" && allowed.includes(a.choice as T) ? (a.choice as T) : fallback;
@@ -242,6 +261,8 @@ export async function decide(
     direction: pick("direction", DIRECTIONS, "ahead"),
     distance: score("distance"),
     same_as_last: reference ? prob("same_as_last") : null,
+    room_left: probOrNull("room_left"),
+    room_right: probOrNull("room_right"),
     latencyMs,
     stub: false,
   };
@@ -251,7 +272,7 @@ export async function decide(
 export function stubAnswers(hasReference: boolean): Answers {
   const roll = Math.random();
   const same_as_last = hasReference ? (Math.random() < 0.7 ? 0.9 : 0.1) : null;
-  const base = { same_as_last, latencyMs: 0, stub: true };
+  const base = { same_as_last, room_left: 0.8, room_right: 0.3, latencyMs: 0, stub: true };
   if (roll < 0.05) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead", distance: 1.9 };
   if (roll < 0.15) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "chair", direction: "right", distance: 1.1 };
   return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead", distance: 0.2 };
@@ -298,6 +319,36 @@ export function announcementKey(a: Announcement): string | undefined {
   return a.kind === "warning" ? `${a.object}|${a.direction ?? "ahead"}` : undefined;
 }
 
+// Things to walk around. Stairs, curbs, doors, walls and signs are named but
+// get no "go around" command.
+const GO_AROUND = new Set<Answers["subject"]>([
+  "person",
+  "chair",
+  "table",
+  "bench",
+  "pole",
+  "trash_can",
+  "bicycle",
+  "vehicle",
+  "other_obstacle",
+]);
+
+// Which way to go. Only for something in the path that is near or close, or
+// something beside the wearer that is close enough to brush. Never claims the
+// way is clear: it points to the side with more room.
+function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance | undefined {
+  if (!GO_AROUND.has(a.subject)) return undefined;
+  const close = urgent || distance === "close";
+  if (a.direction !== "ahead") {
+    if (!close) return undefined;
+    return a.direction === "left" ? "keep_right" : "keep_left";
+  }
+  if (distance === "far" && !urgent) return undefined;
+  if (a.room_left === null || a.room_right === null) return undefined;
+  if (Math.max(a.room_left, a.room_right) < THRESHOLDS.roomMin) return close ? "wait" : undefined;
+  return a.room_left >= a.room_right ? "left" : "right";
+}
+
 export function isSameObject(a: Answers): boolean {
   return a.same_as_last !== null && a.same_as_last >= THRESHOLDS.sameObject;
 }
@@ -314,12 +365,16 @@ export function toAnnouncement(
   motion: Motion | null,
   reference: Pick<Reference, "secondsAgo" | "mentions"> | null,
 ): Announcement | null {
+  const distance = toDistance(a.distance);
   const warning: Warning = {
     kind: "warning",
     object: SUBJECT_OBJECTS[a.subject],
     direction: a.direction,
-    distance: toDistance(a.distance),
+    distance,
+    guidance: toGuidance(a, distance, false),
   };
+  const alarm: Warning = { ...warning, urgent: true, guidance: toGuidance(a, distance, true) };
+  const reminder: Warning = { ...warning, reminder: true };
   const lastSpokeS = Math.min(Infinity, ...recent.map((r) => r.secondsAgo));
   const lastAlarmS = Math.min(Infinity, ...recent.filter((r) => r.urgent).map((r) => r.secondsAgo));
   const same = isSameObject(a);
@@ -343,15 +398,15 @@ export function toAnnouncement(
       window.length > 0 &&
       (a.hazard_close - window[0].hazard_close >= THRESHOLDS.approachRise ||
         a.distance - window[0].distance >= THRESHOLDS.approachDistanceRise);
-    if (!same || approaching) return { ...warning, urgent: true };
+    if (!same || approaching) return alarm;
     // The same hazard, holding still: a reminder in words, not the tone.
-    return reminderDue() ? warning : null;
+    return reminderDue() ? reminder : null;
   }
 
   if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
   // Head turns sweep things through view; let them settle before speaking.
   if (motion?.turning) return null;
-  if (same) return reminderDue() ? warning : null;
+  if (same) return reminderDue() ? reminder : null;
 
   const key = announcementKey(warning);
   const samePhrase = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.samePhraseS);
