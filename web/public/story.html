@@ -1,0 +1,1238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Echo</title>
+<meta name="description" content="The Echo story: a wearable lookout for blind and low-vision people that stays quiet until something matters.">
+<meta property="og:title" content="Echo">
+<meta property="og:description" content="The Echo story: a wearable lookout for blind and low-vision people that stays quiet until something matters.">
+<meta property="og:image" content="/media/echo-walk-01.jpg">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a long-form product page in four chapters with a sticky chapter nav. The centerpiece is a computer-vision demo console. Light only, by design. */
+:root {
+  --bg: #FFFFFF;
+  --bg-2: #F6F7F9;
+  --bg-3: #EEF0F3;
+  --line: #E4E7EC;
+  --line-strong: #CBD1D9;
+  --ink: #0B0D12;
+  --ink-2: #464D5B;
+  --ink-3: #687080;
+  --voice: #2F5BEA;
+  --voice-soft: #EEF2FE;
+  --alarm: #D93A1E;
+  --alarm-soft: #FDEDE9;
+  --silence: #D3D8E0;
+  --c-chair: #0E9384;
+  --c-door: #7A5AF8;
+  --c-person: #DC6803;
+  --font-sans: "Geist", "Helvetica Neue", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+  --wrap: 1240px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -8px rgba(16, 24, 40, 0.08);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding-inline: max(20px, 4vw); }
+
+/* Nav */
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(255, 255, 255, 0.86); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+.nav-in { display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; text-decoration: none; }
+.mark { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.mark i { display: block; width: 3px; border-radius: 1px; background: var(--silence); height: 4px; }
+.mark i.v { background: var(--voice); height: 10px; }
+.mark i.a { background: var(--alarm); height: 16px; }
+.chapters { display: flex; gap: 2px; }
+.chapters a { display: inline-flex; gap: 8px; align-items: baseline; padding: 6px 12px; border-radius: 999px; font-size: 14px; color: var(--ink-3); text-decoration: none; transition: color 160ms, background-color 160ms; }
+.chapters a span { font-family: var(--font-mono); font-size: 11px; }
+.chapters a:hover { color: var(--ink); }
+.chapters a.on { color: var(--ink); background: var(--bg-3); }
+.nav-cta { font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 999px; background: var(--ink); color: #FFFFFF; text-decoration: none; white-space: nowrap; }
+@media (max-width: 860px) { .chapters a b { display: none; } }
+@media (max-width: 560px) { .nav-cta { padding: 7px 12px; font-size: 13px; } .chapters a { padding: 6px 9px; } }
+
+/* Type */
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); display: inline-flex; gap: 10px; align-items: center; }
+.eyebrow b { font-weight: 500; color: var(--voice); }
+h1, h2, h3 { margin: 0; font-weight: 500; text-wrap: balance; }
+h1 { font-size: clamp(54px, 9vw, 128px); line-height: 0.95; letter-spacing: -0.05em; font-weight: 500; }
+h2 { font-size: clamp(36px, 5vw, 68px); line-height: 1.02; letter-spacing: -0.042em; }
+h1.chap { font-size: clamp(36px, 5vw, 68px); line-height: 1.02; letter-spacing: -0.042em; }
+h3 { font-size: 20px; line-height: 1.3; letter-spacing: -0.015em; font-weight: 500; }
+p { margin: 0; }
+.lede { font-size: clamp(18px, 1.6vw, 21px); line-height: 1.55; color: var(--ink-2); max-width: 42ch; letter-spacing: -0.01em; }
+.dim { color: var(--ink-2); }
+.dimmer { color: var(--ink-3); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tag { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 4px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; }
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+
+section.chapter { padding-block: clamp(96px, 12vw, 160px) 0; }
+section.chapter.first { padding-top: clamp(48px, 7vw, 96px); }
+.chapter-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: clamp(40px, 5vw, 64px); }
+.chapter-head .head-l { display: flex; flex-direction: column; gap: 24px; }
+@media (max-width: 900px) { .chapter-head { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+
+/* Hero */
+.hero { padding-block: clamp(40px, 6vw, 72px) 0; background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%); border-bottom: 1px solid var(--line); }
+.hero-grid { display: flex; flex-direction: column; gap: 24px; }
+.hero h1 { font-size: clamp(48px, 7vw, 96px); }
+.hero h1 .soft { color: var(--ink-3); }
+.hero-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+.hero-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+.hero-meta div { display: flex; flex-direction: column; gap: 2px; }
+.hero-meta .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.hero-meta .v { font-size: 15px; color: var(--ink); }
+.trip { overflow: hidden; }
+.hero-con { margin-top: clamp(16px, 2.5vw, 32px); margin-bottom: clamp(48px, 7vw, 88px); }
+.trip-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.ear { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ear-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--bg-3); color: var(--ink-3); transition: background-color 200ms, color 200ms; }
+.ear-ic svg { width: 20px; height: 20px; }
+.ear.v .ear-ic { background: var(--voice); color: #FFFFFF; }
+.ear.a .ear-ic { background: var(--alarm); color: #FFFFFF; }
+.ear-t { display: flex; flex-direction: column; min-width: 0; }
+.ear-k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.ear-w { font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink-3); line-height: 1.3; }
+.ear.v .ear-w { color: var(--ink); }
+.ear.a .ear-w { color: var(--alarm); }
+.trip-stats { display: flex; gap: 24px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.trip-stats b { display: block; font-family: var(--font-sans); font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.trip-stats .sv b { color: var(--voice); }
+.trip-stats .sa b { color: var(--alarm); }
+.map { display: block; width: 100%; height: auto; background: #F3F4F6; }
+.trip-foot { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 20px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3); }
+.trip-foot span { display: inline-flex; align-items: center; gap: 8px; }
+.trip-foot i { display: inline-block; }
+.lg-route { width: 18px; height: 3px; border-radius: 2px; background: var(--voice); }
+.lg-cam { width: 14px; height: 10px; background: rgba(47, 91, 234, 0.16); clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+.lg-cane { width: 14px; height: 2px; background: var(--ink-2); }
+.lg-said { width: 8px; height: 8px; border-radius: 50%; background: var(--voice); }
+.lg-alarm { width: 8px; height: 8px; border-radius: 50%; background: var(--alarm); }
+@media (max-width: 640px) { .trip-stats { gap: 16px; } .ear-w { font-size: 17px; } }
+
+/* Chapter 1: the drawing */
+.drawing { padding: clamp(16px, 3vw, 36px); margin: 0; }
+.drawing-scroll { overflow-x: auto; }
+.drawing svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.drawing-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding-top: 24px; margin-top: 8px; border-top: 1px solid var(--line); }
+.drawing-foot div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.drawing-foot .n { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--alarm); }
+@media (max-width: 760px) { .drawing-foot { grid-template-columns: minmax(0, 1fr); } }
+.dw-bg { fill: var(--bg-2); }
+.dw-grid { stroke: var(--line); stroke-width: 1; }
+.dw-ground { stroke: var(--ink-3); stroke-width: 1.25; }
+.dw-figure { fill: var(--ink); }
+.dw-cane { stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.dw-reach { fill: url(#reachGlow); }
+.dw-reach-edge { stroke: var(--voice); stroke-width: 1; stroke-dasharray: 3 4; }
+.dw-haz { fill: var(--alarm-soft); stroke: var(--alarm); stroke-width: 1.4; }
+.dw-haz-thin { stroke: var(--alarm); stroke-width: 1; fill: none; }
+.dw-t { font-family: var(--font-sans); font-size: 14px; fill: var(--ink); letter-spacing: -0.01em; }
+.dw-s { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-3); letter-spacing: 0.04em; }
+.dw-v { font-family: var(--font-mono); font-size: 10.5px; fill: var(--voice); letter-spacing: 0.06em; }
+.dw-a { font-family: var(--font-mono); font-size: 10.5px; fill: var(--alarm); letter-spacing: 0.06em; }
+.dw-dim { stroke: var(--ink-3); stroke-width: 1; }
+.dw-unseen { fill: url(#unseen); }
+.question { margin-top: clamp(56px, 7vw, 96px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 32px; padding-top: 36px; border-top: 1px solid var(--line); }
+.question p { font-size: clamp(28px, 3.4vw, 48px); line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance; }
+.question p em { font-style: normal; color: var(--voice); }
+@media (max-width: 760px) { .question { grid-template-columns: minmax(0, 1fr); } }
+
+/* Chapter 2: the demo console */
+.console { overflow: hidden; }
+.con-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.con-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; font-weight: 500; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--bg-3); color: var(--ink-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; white-space: nowrap; }
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #12B76A; }
+.con-ctl { display: flex; gap: 8px; }
+.btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { background: var(--bg-2); }
+.btn[aria-pressed="true"] { background: var(--ink); color: #FFFFFF; border-color: var(--ink); }
+.btn:focus-visible, a:focus-visible { outline: 2px solid var(--voice); outline-offset: 2px; }
+.con-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+@media (max-width: 960px) { .con-body { grid-template-columns: minmax(0, 1fr); } }
+.view { position: relative; aspect-ratio: 16 / 10; max-width: 100%; background: #DDE1E7; border-right: 1px solid var(--line); }
+@media (min-width: 961px) { .view { aspect-ratio: auto; min-height: 460px; } }
+@media (max-width: 960px) { .view { border-right: 0; border-bottom: 1px solid var(--line); } }
+@media (max-width: 560px) { .view { aspect-ratio: 4 / 5; } }
+.view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.view-flash { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 var(--alarm); transition: box-shadow 200ms ease-out; }
+.view.alarming .view-flash { box-shadow: inset 0 0 0 4px var(--alarm); }
+.view-tl { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+.view-tl span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.88); color: var(--ink-2); border: 1px solid rgba(11, 13, 18, 0.08); }
+.caption { position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 6px); opacity: 0; transition: opacity 200ms, transform 200ms; display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px 9px 12px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: clamp(14px, 1.6vw, 18px); font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; pointer-events: none; box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.35); }
+.caption::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--voice); }
+.caption.alarm { background: var(--alarm); }
+.caption.alarm::before { background: #FFFFFF; }
+.caption.show { opacity: 1; transform: translate(-50%, 0); }
+.side { display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
+.side section { padding: 16px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.side section:last-child { border-bottom: 0; flex: 1; }
+.side h4 { margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+.score { display: grid; grid-template-columns: 104px minmax(0, 1fr) 38px; gap: 10px; align-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+.score .bar { position: relative; height: 6px; border-radius: 3px; background: var(--bg-3); overflow: visible; }
+.score .bar i { display: block; height: 6px; border-radius: 3px; width: 0; background: var(--voice); transition: width 240ms ease-out; }
+.score .bar.hot i { background: var(--alarm); }
+.score .bar b { position: absolute; top: -3px; width: 1px; height: 12px; background: var(--ink-3); }
+.score .val { text-align: right; color: var(--ink); }
+.outcome { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--bg-2); font-size: 13px; }
+.outcome span { color: var(--ink-3); }
+.outcome strong { font-weight: 600; }
+.outcome.v { background: var(--voice-soft); } .outcome.v strong { color: var(--voice); }
+.outcome.a { background: var(--alarm-soft); } .outcome.a strong { color: var(--alarm); }
+.kv { margin: 0; display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
+.kv dt { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.kv dd { margin: 0; color: var(--ink); min-width: 0; }
+.kv dd .m { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.around { font-size: 13px; line-height: 1.5; color: var(--ink-2); transition: opacity 300ms; }
+.around.fade { opacity: 0.3; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.log li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+.log .t { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.log .a { color: var(--alarm); font-weight: 500; }
+.log .empty { display: block; grid-column: 1 / -1; color: var(--ink-3); }
+.con-foot { border-top: 1px solid var(--line); padding: 14px 16px; background: var(--bg-2); }
+.strip { display: grid; grid-template-columns: repeat(60, minmax(0, 1fr)); gap: 3px; align-items: end; height: 26px; }
+.strip i { display: block; height: 4px; border-radius: 1px; background: var(--silence); }
+.strip i.v { height: 15px; background: var(--voice); }
+.strip i.a { height: 26px; background: var(--alarm); }
+.strip-meta { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.strip-meta .k { display: inline-flex; gap: 14px; }
+.strip-meta .k span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; background: var(--silence); }
+.strip-meta .k span.v::before { background: var(--voice); }
+.strip-meta .k span.a::before { background: var(--alarm); }
+
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: clamp(56px, 7vw, 96px); }
+.trio > div { padding: clamp(22px, 2.6vw, 32px); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.trio .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.trio .say { font-size: clamp(22px, 2.2vw, 28px); line-height: 1.2; letter-spacing: -0.03em; }
+.trio .quiet .say { color: var(--ink-3); }
+.trio .voice .k { color: var(--voice); }
+.trio .alarm .k { color: var(--alarm); }
+.trio .wave { height: 36px; display: flex; align-items: center; gap: 3px; overflow: hidden; }
+.trio .wave i { display: block; width: 3px; border-radius: 2px; background: var(--silence); height: 2px; flex: none; }
+.trio .voice .wave i { background: var(--voice); }
+.trio .alarm .wave i { background: var(--alarm); }
+@media (max-width: 1000px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+
+.film { margin-top: clamp(56px, 7vw, 96px); display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 40px; align-items: center; }
+@media (max-width: 900px) { .film { grid-template-columns: minmax(0, 1fr); } }
+.film-frame { position: relative; aspect-ratio: 16 / 9; max-width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg-2); }
+.film-frame::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.7; }
+.play { position: relative; width: 76px; height: 76px; border-radius: 50%; background: var(--ink); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px -8px rgba(16, 24, 40, 0.4); }
+.play svg { width: 22px; height: 22px; margin-left: 4px; }
+.film-frame .meta { position: absolute; left: 16px; bottom: 14px; right: 16px; display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+
+/* Chapter 3: lanes */
+.lanes { padding: clamp(16px, 3vw, 32px); }
+.lanes-scroll { overflow-x: auto; }
+.lanes svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.ln-label { font-family: var(--font-sans); font-size: 15px; fill: var(--ink); letter-spacing: -0.01em; }
+.ln-sub { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-3); letter-spacing: 0.02em; }
+.ln-base { stroke: var(--line-strong); stroke-width: 1; }
+.ln-guide { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 5; }
+.ln-ev { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-2); letter-spacing: 0.06em; }
+.ln-chatter { fill: var(--ink-3); }
+.ln-beep { fill: var(--ink-2); }
+.ln-ask { fill: var(--ink-2); }
+.ln-voice { fill: var(--voice); }
+.ln-alarm { fill: var(--alarm); }
+.ln-word { font-family: var(--font-sans); font-size: 12.5px; fill: var(--ink); }
+.ln-word-a { font-family: var(--font-sans); font-size: 12.5px; fill: var(--alarm); }
+.ln-axis { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-3); }
+.ln-echo-band { fill: var(--voice-soft); }
+.lanes-cap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: 14px; color: var(--ink-3); }
+
+.gaps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-top: clamp(56px, 7vw, 96px); }
+.gaps > div { display: flex; flex-direction: column; gap: 12px; padding-top: 22px; border-top: 1px solid var(--ink); min-width: 0; }
+.gaps .who { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+@media (max-width: 860px) { .gaps { grid-template-columns: minmax(0, 1fr); } }
+
+.pull { margin-top: clamp(72px, 9vw, 128px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--bg-2); border: 1px solid var(--line); }
+.pull > p { font-size: clamp(36px, 5.6vw, 80px); line-height: 1.0; letter-spacing: -0.048em; max-width: 15ch; text-wrap: balance; }
+.pull > p span { color: var(--ink-3); }
+.why-now { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; margin-top: 40px; max-width: 960px; }
+@media (max-width: 760px) { .why-now { grid-template-columns: minmax(0, 1fr); } }
+
+.compare { margin-top: clamp(56px, 7vw, 96px); overflow-x: auto; }
+.compare table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 15px; }
+.compare th, .compare td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--line); }
+.compare tr:last-child th, .compare tr:last-child td { border-bottom: 0; }
+.compare thead th { font-family: var(--font-mono); font-weight: 400; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); background: var(--bg-2); }
+.compare tbody th { font-weight: 500; }
+.compare td { color: var(--ink-2); }
+.compare tr.us th, .compare tr.us td { color: var(--ink); background: var(--voice-soft); }
+.y::before, .n::before, .p::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; vertical-align: 1px; box-sizing: border-box; }
+.y::before { background: var(--voice); }
+.n::before { border: 1px solid var(--ink-3); }
+.p::before { background: linear-gradient(90deg, var(--ink-3) 50%, transparent 50%); border: 1px solid var(--ink-3); }
+
+.pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 40px; margin-top: clamp(56px, 7vw, 96px); }
+.pillars div { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pillars .i { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--voice); }
+@media (max-width: 860px) { .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pillars { grid-template-columns: minmax(0, 1fr); } }
+
+/* Chapter 4: pipeline */
+.pipe { padding: clamp(16px, 3vw, 36px); }
+.pipe-scroll { overflow-x: auto; }
+.pipe svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.pp-node { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1; }
+.pp-node-hi { fill: var(--voice-soft); stroke: var(--voice); stroke-width: 1.25; }
+.pp-t { font-family: var(--font-sans); font-size: 17px; fill: var(--ink); letter-spacing: -0.01em; }
+.pp-s { font-family: var(--font-sans); font-size: 12.5px; fill: var(--ink-2); }
+.pp-m { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-3); letter-spacing: 0.06em; }
+.pp-n { font-family: var(--font-mono); font-size: 10.5px; fill: var(--voice); letter-spacing: 0.08em; }
+.pp-wire { stroke: var(--line-strong); stroke-width: 1.25; fill: none; }
+.pp-pulse { stroke: var(--voice); stroke-width: 2.5; fill: none; stroke-dasharray: 14 200; stroke-linecap: round; }
+@media (prefers-reduced-motion: no-preference) { .pp-pulse { animation: flow 2.4s linear infinite; } }
+@keyframes flow { from { stroke-dashoffset: 214; } to { stroke-dashoffset: 0; } }
+.pp-out-s { fill: var(--silence); }
+.pp-out-v { fill: var(--voice); }
+.pp-out-a { fill: var(--alarm); }
+.pp-o { font-family: var(--font-sans); font-size: 13px; fill: var(--ink); }
+.pp-bg { fill: var(--bg-2); }
+
+.decision { margin-top: clamp(56px, 7vw, 96px); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .decision { grid-template-columns: minmax(0, 1fr); } }
+.decision .txt { display: flex; flex-direction: column; gap: 20px; }
+.qcard { overflow: hidden; }
+.qcard-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3); background: var(--bg-2); }
+.q { display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px; gap: 6px 16px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+@media (max-width: 520px) { .q { grid-template-columns: 112px minmax(0, 1fr) 52px; padding: 12px 16px; } }
+.q .nm { font-family: var(--font-mono); font-size: 13px; }
+.q .ask { grid-column: 1 / -1; font-size: 13px; color: var(--ink-3); }
+.q .bar { height: 6px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.q .bar i { display: block; height: 6px; background: var(--voice); }
+.q .val { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.q .ch { grid-column: 2 / 4; font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.qcard-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; }
+.out-pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--voice); color: #FFFFFF; font-weight: 500; font-size: 14px; }
+
+.stack { margin-top: clamp(56px, 7vw, 96px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stack div { padding: 20px; display: flex; flex-direction: column; gap: 6px; min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--bg-2); }
+.stack .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.stack .v { font-size: 18px; letter-spacing: -0.02em; }
+@media (max-width: 760px) { .stack { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+footer { margin-top: clamp(112px, 13vw, 180px); border-top: 1px solid var(--line); padding-block: 36px 52px; background: var(--bg-2); }
+.foot { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
+.foot .limits { max-width: 62ch; font-size: 14px; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+
+/* Site additions: the recorded walk, the Live demo button and the closing call to action. */
+.nav-cta { display: inline-flex; align-items: center; gap: 8px; }
+.nav-cta .live, .cta-btn .live { width: 7px; height: 7px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.22); }
+.film-video { position: relative; justify-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; border-radius: 28px; overflow: hidden; background: var(--ink); }
+.film-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cta { margin-top: clamp(112px, 13vw, 180px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--ink); color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+.cta h2 { color: #FFFFFF; max-width: 14ch; }
+.cta p { color: rgba(255, 255, 255, 0.72); max-width: 44ch; margin-top: 16px; }
+.cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.cta-btn:hover { background: var(--bg-3); }
+.cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
+    <nav class="chapters" aria-label="Chapters">
+      <a href="#problem" data-ch="problem"><span>01</span><b>Problem</b></a>
+      <a href="#echo" data-ch="echo"><span>02</span><b>Echo</b></a>
+      <a href="#different" data-ch="different"><span>03</span><b>Different</b></a>
+      <a href="#built" data-ch="built"><span>04</span><b>Built</b></a>
+    </nav>
+    <a class="nav-cta" href="/demo"><span class="live" aria-hidden="true"></span>Live demo</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- 01 Problem -->
+  <section class="chapter first" id="problem" aria-labelledby="h-problem">
+    <div class="wrap">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>01</b> The problem</span>
+          <h1 class="chap" id="h-problem">For blind and low-vision people, a cane only tells part of the story.</h1>
+        </div>
+        <p class="lede">A cane finds what's on the ground about a step ahead. Everything higher, or a few steps further, arrives without warning.</p>
+      </div>
+
+      <figure class="card drawing">
+        <div class="drawing-scroll">
+        <svg viewBox="0 0 1160 430" role="img" aria-label="Section drawing. A cane covers the ground about one meter ahead. An open cabinet door at head height, a chair two meters out and a person stepping out at three meters are all outside the cane's reach.">
+          <defs>
+            <linearGradient id="reachGlow" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#2F5BEA" stop-opacity="0.03"/><stop offset="1" stop-color="#2F5BEA" stop-opacity="0.22"/></linearGradient>
+            <linearGradient id="unseen" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#D93A1E" stop-opacity="0.06"/><stop offset="1" stop-color="#D93A1E" stop-opacity="0"/></linearGradient>
+          </defs>
+          <g>
+            <line class="dw-grid" x1="140" y1="30" x2="140" y2="360"/><line class="dw-grid" x1="390" y1="30" x2="390" y2="360"/><line class="dw-grid" x1="640" y1="30" x2="640" y2="360"/><line class="dw-grid" x1="890" y1="30" x2="890" y2="360"/><line class="dw-grid" x1="1140" y1="30" x2="1140" y2="360"/>
+            <line class="dw-grid" x1="20" y1="160" x2="1140" y2="160"/><line class="dw-grid" x1="20" y1="260" x2="1140" y2="260"/>
+            <text class="dw-s" x="148" y="154">1.6 m · EYE LEVEL</text><text class="dw-s" x="148" y="254">0.8 m · WAIST</text>
+          </g>
+          <rect class="dw-unseen" x="390" y="30" width="750" height="330"/>
+          <rect class="dw-reach" x="140" y="322" width="250" height="38"/>
+          <line class="dw-reach-edge" x1="390" y1="296" x2="390" y2="360"/>
+          <text class="dw-v" x="230" y="312">CANE REACH</text>
+          <circle class="dw-figure" cx="104" cy="96" r="17"/>
+          <rect class="dw-figure" x="89" y="118" width="30" height="132" rx="13"/>
+          <rect class="dw-figure" x="91" y="240" width="11" height="120" rx="5"/>
+          <rect class="dw-figure" x="106" y="240" width="11" height="120" rx="5"/>
+          <line class="dw-cane" x1="117" y1="196" x2="384" y2="357"/>
+          <rect class="dw-haz" x="430" y="96" width="96" height="62" rx="2"/>
+          <line class="dw-haz-thin" x1="430" y1="96" x2="430" y2="30"/>
+          <text class="dw-t" x="442" y="60">Open cabinet door</text>
+          <text class="dw-a" x="442" y="80">HEAD HEIGHT</text>
+          <rect class="dw-haz" x="640" y="270" width="80" height="10" rx="2"/>
+          <rect class="dw-haz" x="710" y="196" width="10" height="84" rx="2"/>
+          <line class="dw-haz-thin" x1="646" y1="280" x2="646" y2="360"/><line class="dw-haz-thin" x1="714" y1="280" x2="714" y2="360"/>
+          <text class="dw-t" x="732" y="214">Chair in the aisle</text>
+          <text class="dw-a" x="732" y="234">TWO STEPS OUT</text>
+          <circle class="dw-haz" cx="952" cy="92" r="16"/>
+          <rect class="dw-haz" x="938" y="114" width="28" height="246" rx="12"/>
+          <path class="dw-haz-thin" d="M1018 214 H 982 M 990 206 L 982 214 L 990 222"/>
+          <text class="dw-t" x="986" y="88">Person stepping out</text>
+          <text class="dw-a" x="986" y="108">MOVING INTO YOUR PATH</text>
+          <line class="dw-ground" x1="20" y1="360" x2="1140" y2="360"/>
+          <g>
+            <line class="dw-dim" x1="140" y1="384" x2="1140" y2="384"/>
+            <line class="dw-dim" x1="140" y1="378" x2="140" y2="390"/><text x="140" y="408" text-anchor="middle" class="dw-s">0</text>
+            <line class="dw-dim" x1="390" y1="378" x2="390" y2="390"/><text x="390" y="408" text-anchor="middle" class="dw-s">1 m</text>
+            <line class="dw-dim" x1="640" y1="378" x2="640" y2="390"/><text x="640" y="408" text-anchor="middle" class="dw-s">2 m</text>
+            <line class="dw-dim" x1="890" y1="378" x2="890" y2="390"/><text x="890" y="408" text-anchor="middle" class="dw-s">3 m</text>
+            <line class="dw-dim" x1="1140" y1="378" x2="1140" y2="390"/><text x="1140" y="408" text-anchor="end" class="dw-s">4 m</text>
+          </g>
+        </svg>
+        </div>
+        <div class="drawing-foot">
+          <div><span class="n">Above the waist</span><span class="dim">Cabinet doors, shelves, branches and signs sit where a cane never sweeps.</span></div>
+          <div><span class="n">Beyond a step</span><span class="dim">A chair two meters out is found only when the cane hits it.</span></div>
+          <div><span class="n">Moving</span><span class="dim">People step into your path faster than a cane can find them.</span></div>
+        </div>
+      </figure>
+
+      <div class="question">
+        <span class="eyebrow">The question</span>
+        <p>How might we tell the rest of the story, <em>for a fraction of the cost?</em></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 Echo -->
+  <section class="chapter" id="echo" aria-labelledby="h-echo">
+    <div class="wrap">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>02</b> The solution</span>
+          <h2 id="h-echo">Echo is a lookout you wear.</h2>
+        </div>
+        <p class="lede">Echo uses camera glasses to watch the path ahead. Twice a second Echo decides: stay quiet, say a few words, or sound one alarm. Mostly it stays quiet, so your ears stay on the world.</p>
+      </div>
+
+      <div class="card console" id="console">
+        <div class="con-bar">
+          <div class="con-title">Live view <span class="pill"><span class="dot"></span>Simulation</span><span class="pill" id="frame">Frame 0000</span><span class="pill">2 frames per call</span></div>
+          <div class="con-ctl">
+            <button class="btn" id="sound" type="button" aria-pressed="false">Sound off</button>
+            <button class="btn" id="pp" type="button">Pause</button>
+          </div>
+        </div>
+        <div class="con-body">
+          <div class="view" id="view">
+            <canvas id="walk" role="img" aria-label="Simulated head-mounted camera view of a hallway. Echo stays quiet, says Bear left, chair ahead, then Keep right, door on your left, then sounds the alarm with Stop, person in front, wait, when someone steps out."></canvas>
+            <div class="view-flash"></div>
+            <div class="view-tl"><span>CAM · 640 PX</span><span>EYE 160 CM · TILT −12°</span></div>
+            <div class="caption" id="caption"></div>
+          </div>
+          <aside class="side" aria-label="Decision panel">
+            <section>
+              <h4><span>Gates</span><span id="lat">412 ms</span></h4>
+              <div class="score"><span>stop</span><span class="bar" id="b-stop"><i></i><b style="left:80%"></b></span><span class="val" id="v-stop">0.00</span></div>
+              <div class="score"><span>course</span><span class="bar" id="b-course"><i></i><b style="left:55%"></b></span><span class="val" id="v-course">0.00</span></div>
+              <div class="score"><span>footing</span><span class="bar" id="b-footing"><i></i><b style="left:55%"></b></span><span class="val" id="v-footing">0.00</span></div>
+              <div class="score"><span>orient</span><span class="bar" id="b-orient"><i></i><b style="left:65%"></b></span><span class="val" id="v-orient">0.00</span></div>
+              <div class="outcome" id="outcome"><span>Outcome</span><strong id="out">Silence</strong></div>
+            </section>
+            <section>
+              <h4><span>Focus</span><span>One thing per frame</span></h4>
+              <dl class="kv" id="focus"></dl>
+            </section>
+            <section>
+              <h4><span>Around you</span><span>Every 4 s</span></h4>
+              <p class="around" id="around">An indoor hallway with doors on both sides. You're walking straight at a steady pace.</p>
+            </section>
+            <section>
+              <h4><span>Spoken</span></h4>
+              <ul class="log" id="log"><li><span class="empty">Nothing yet. That's normal.</span></li></ul>
+            </section>
+          </aside>
+        </div>
+        <div class="con-foot">
+          <div class="strip" id="strip" aria-hidden="true"></div>
+          <div class="strip-meta"><span class="k"><span>Silence</span><span class="v">A few words</span><span class="a">Alarm</span></span><span>Last 30 s · one mark per decision · scores simulated, routed with Echo's real thresholds</span></div>
+        </div>
+      </div>
+
+      <div class="trio">
+        <div class="card quiet"><span class="k">Most of the time</span><div class="wave" data-w="quiet"></div><span class="say">Silence.</span><p class="dim">A clear hallway, a poster, someone passing on the other side. Nothing worth your attention.</p></div>
+        <div class="card voice"><span class="k">Something in the way</span><div class="wave" data-w="voice"></div><span class="say">"Bear left. Chair ahead."</span><p class="dim">What to do first, then why, so you can act on the first word. Said once, short enough to hear without stopping.</p></div>
+        <div class="card alarm"><span class="k">A step or two away</span><div class="wave" data-w="alarm"></div><span class="say">One chime. "Stop. Person in front. Wait."</span><p class="dim">Echo has one sound, and it always means stop. It's kept for people, bikes and vehicles, which move faster than words, so you can trust it.</p></div>
+      </div>
+
+      <figure class="card trip" style="margin:clamp(56px,7vw,96px) 0 0" aria-label="A walk down an office hallway seen from above. Echo stays quiet most of the way, says Bear left, chair ahead, then Keep right, door on your left, and sounds one alarm when a person steps out.">
+        <div class="trip-bar">
+          <div class="ear" id="ear" aria-live="off">
+            <span class="ear-ic" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v4h3l4 3V5L6 8z"/><path id="ear-wave" d="M13 7.5a3.5 3.5 0 0 1 0 5M15.5 5a7 7 0 0 1 0 10"/></svg></span>
+            <span class="ear-t"><span class="ear-k" id="ear-k">In your ear</span><span class="ear-w" id="ear-w">Nothing. Echo stays quiet.</span></span>
+          </div>
+          <div class="trip-stats">
+            <span><b id="n-dec">0</b>decisions</span>
+            <span class="sv"><b id="n-said">0</b>spoken</span>
+            <span class="sa"><b id="n-alarm">0</b>alarm</span>
+          </div>
+        </div>
+        <svg class="map" id="map" viewBox="0 0 1200 520" role="presentation" aria-hidden="true">
+          <defs>
+            <pattern id="stairs" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#FFFFFF"/><path d="M0 0V14" stroke="#D5DAE1" stroke-width="2"/></pattern>
+            <filter id="pin-sh" x="-20%" y="-40%" width="140%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#101828" flood-opacity="0.14"/></filter>
+          </defs>
+          <!-- Rooms -->
+          <g fill="#FFFFFF" stroke="#D5DAE1" stroke-width="2">
+            <rect x="24" y="24" width="276" height="186"/><rect x="300" y="24" width="320" height="186"/><rect x="620" y="24" width="300" height="186"/><rect x="920" y="24" width="256" height="186"/>
+            <rect x="24" y="310" width="396" height="186"/><rect x="420" y="310" width="240" height="186"/><rect x="660" y="310" width="240" height="186"/><rect x="900" y="310" width="276" height="186" fill="url(#stairs)"/>
+          </g>
+          <!-- Corridor floor -->
+          <rect x="24" y="210" width="1152" height="100" fill="#EDEFF2"/>
+          <!-- Doorways (gaps in the walls) -->
+          <g stroke="#EDEFF2" stroke-width="4">
+            <path d="M140 210h52M430 210h52M830 210h56M1000 210h52M300 310h52M520 310h52M820 310h52M960 310h60"/>
+          </g>
+          <!-- Furniture -->
+          <g fill="#F3F4F6" stroke="#E1E5EA" stroke-width="1.5">
+            <rect x="60" y="60" width="120" height="44" rx="8"/><rect x="200" y="60" width="64" height="64" rx="32"/>
+            <rect x="370" y="80" width="180" height="70" rx="35"/>
+            <rect x="640" y="40" width="260" height="34" rx="4"/><rect x="700" y="110" width="80" height="60" rx="6"/>
+            <rect x="950" y="60" width="90" height="50" rx="4"/><rect x="1060" y="60" width="90" height="50" rx="4"/><rect x="950" y="130" width="90" height="50" rx="4"/><rect x="1060" y="130" width="90" height="50" rx="4"/>
+            <rect x="60" y="350" width="90" height="50" rx="4"/><rect x="170" y="350" width="90" height="50" rx="4"/><rect x="280" y="350" width="90" height="50" rx="4"/><rect x="60" y="420" width="90" height="50" rx="4"/><rect x="170" y="420" width="90" height="50" rx="4"/><rect x="280" y="420" width="90" height="50" rx="4"/>
+            <rect x="450" y="420" width="120" height="50" rx="4"/>
+            <rect x="700" y="400" width="130" height="60" rx="4"/>
+          </g>
+          <g font-family="Geist Mono, ui-monospace, monospace" font-size="11" letter-spacing="1.2" fill="#8A93A2">
+            <text x="40" y="46">LOBBY</text><text x="316" y="46">CONFERENCE B</text><text x="636" y="96">KITCHEN</text><text x="936" y="46">DESKS</text>
+            <text x="40" y="490">OPEN DESKS</text><text x="436" y="490">PRINT</text><text x="676" y="490">OFFICE 4</text><text x="916" y="490">STAIRS DOWN</text>
+          </g>
+          <!-- Wall cabinet on the corridor's north wall, door swung open into the hallway -->
+          <rect x="606" y="210" width="60" height="12" fill="#E1E5EA" stroke="#C4CBD4" stroke-width="1.5"/>
+          <path d="M606 222 A 48 48 0 0 1 640 256" fill="none" stroke="#C4CBD4" stroke-dasharray="3 3"/>
+          <g id="o-door"><line x1="606" y1="222" x2="640" y2="256" stroke="#5B6372" stroke-width="5" stroke-linecap="round"/></g>
+          <!-- Chair in the aisle -->
+          <g id="o-chair" transform="translate(380 262)"><rect x="-12" y="-12" width="24" height="24" rx="5" fill="#5B6372"/><rect x="-14" y="10" width="28" height="6" rx="3" fill="#3E4553"/></g>
+          <!-- Route -->
+          <path id="route-ahead" d="M70 260H1130" stroke="#B9C1CC" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round" fill="none"/>
+          <path id="route-done" d="M70 260H70" stroke="#2F5BEA" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="1130" cy="260" r="6" fill="#FFFFFF" stroke="#B9C1CC" stroke-width="3"/>
+          <text x="1130" y="240" text-anchor="middle" font-family="Geist, system-ui" font-size="12" fill="#687080">Desks</text>
+          <!-- Detections and callouts are drawn here -->
+          <g id="dets"></g>
+          <!-- Person -->
+          <g id="o-person"><ellipse rx="15" ry="9" fill="#5B6372"/><circle r="7" fill="#3E4553"/></g>
+          <!-- Walker -->
+          <g id="walker">
+            <path id="fov" d="M0 0L160 -92A184 184 0 0 1 160 92Z" fill="rgba(47,91,234,0.10)" stroke="rgba(47,91,234,0.28)" stroke-width="1"/>
+            <line x1="0" y1="0" x2="40" y2="10" stroke="#3E4553" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="40" cy="10" r="2.5" fill="#3E4553"/>
+            <circle r="18" fill="rgba(47,91,234,0.16)" id="halo"/>
+            <circle r="9" fill="#2F5BEA" stroke="#FFFFFF" stroke-width="3"/>
+          </g>
+          <g id="pins"></g>
+        </svg>
+        <figcaption class="trip-foot">
+          <span><i class="lg-route"></i>Your route</span>
+          <span><i class="lg-cam"></i>What the camera sees</span>
+          <span><i class="lg-cane"></i>Cane, about 1 m</span>
+          <span><i class="lg-said"></i>Spoken</span>
+          <span><i class="lg-alarm"></i>Alarm</span>
+        </figcaption>
+      </figure>
+
+      <div class="film" id="film">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span class="eyebrow">The recorded walk</span>
+          <h3 style="font-size:clamp(26px,2.6vw,34px);line-height:1.12;letter-spacing:-0.03em">One real walk, with every decision Echo made shown on top.</h3>
+          <p class="dim">Recorded with a phone standing in for the glasses.</p>
+        </div>
+        <div class="card film-video">
+          <video controls playsinline preload="metadata" poster="/media/echo-walk-01.jpg" aria-label="Screen recording of Echo running on a phone during a real walk">
+            <source src="/media/echo-walk-01.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 Different -->
+  <section class="chapter" id="different" aria-labelledby="h-diff">
+    <div class="wrap">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>03</b> What sets us apart</span>
+          <h2 id="h-diff">Everyone else built a better describer. We built a better decision.</h2>
+        </div>
+        <p class="lede">Here is the same thirty-second walk, heard four ways.</p>
+      </div>
+
+      <div class="card lanes">
+        <div class="lanes-scroll"><svg id="lanes" viewBox="0 0 1160 470" role="img" aria-label="Four audio lanes over the same thirty-second walk past a chair, a door and a person. A narrator talks constantly. A describer is silent unless asked. An obstacle wearable beeps without words. Echo is silent except for two short phrases and one alarm."></svg></div>
+        <div class="lanes-cap"><span>Illustration of each approach over the same route.</span><span class="mono">0 to 30 s</span></div>
+      </div>
+
+      <div class="gaps">
+        <div><span class="who">Be My AI · Meta AI · ChatGPT live video</span><h3>Describers wait to be asked.</h3><p class="dim">They can tell you what's ahead, but only when you stop and ask. Nobody can ask "is anything about to hit me?" every two seconds.</p></div>
+        <div><span class="who">Obstacle wearables, such as biped</span><h3>Wearables beep without words.</h3><p class="dim">A beep says something is there. It can't tell a chair from a person or the top of a staircase, and each calls for a different move.</p></div>
+        <div><span class="who">Dedicated assistive devices</span><h3>Specialist hardware costs thousands.</h3><p class="dim">Purpose-built camera wearables are priced out of reach for most people. <span class="tag">Price check pending</span></p></div>
+      </div>
+
+      <div class="pull">
+        <p>The hard part isn't seeing. <span>It's deciding when to speak.</span></p>
+        <div class="why-now">
+          <p class="dim">Two things changed. Camera glasses are now everyday consumer hardware. And models that judge a scene and answer with a probability now cost about a cent a minute to run.</p>
+          <p class="dim">Together, a lookout that once needed custom hardware now runs on a phone, for a fraction of the cost.</p>
+        </div>
+      </div>
+
+      <div class="card compare">
+        <table>
+          <thead><tr><th scope="col"></th><th scope="col">Speaks up on its own</th><th scope="col">Says what and where</th><th scope="col">Quiet otherwise</th><th scope="col">Tuned to you</th><th scope="col">Runs on</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Describers</th><td><span class="n">No</span></td><td><span class="y">Yes</span></td><td><span class="p">Only because it waits</span></td><td><span class="n">No</span></td><td>Phone, smart glasses</td></tr>
+            <tr><th scope="row">Obstacle wearables</th><td><span class="y">Yes</span></td><td><span class="n">Sounds only</span></td><td><span class="p">Mostly</span></td><td><span class="p">Limited</span></td><td>Dedicated device</td></tr>
+            <tr class="us"><th scope="row">Echo</th><td><span class="y">Yes</span></td><td><span class="y">Yes</span></td><td><span class="y">By design</span></td><td><span class="y">Yes</span></td><td>Phone today, glasses next</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pillars">
+        <div><span class="i">Speaks first</span><h3>It tells you before you ask.</h3><p class="dim">What to do, then what is there, in a few words.</p></div>
+        <div><span class="i">Built around silence</span><h3>Success is what it didn't say.</h3><p class="dim">Fewer words, without missing anything that mattered.</p></div>
+        <div><span class="i">Measured, not guessed</span><h3>It decides with probabilities.</h3><p class="dim">Thresholds we can test on recorded walks and tune.</p></div>
+        <div><span class="i">Trustworthy alarm</span><h3>It won't cry wolf.</h3><p class="dim">Two frames must agree before the chime, and it's kept for things that move.</p></div>
+        <div><span class="i">Personal</span><h3>It listens to your rules.</h3><p class="dim">"Doors and stairs always. People only if they're in my way."</p></div>
+        <div><span class="i">Honest</span><h3>It never says a path is clear.</h3><p class="dim">An early heads-up that works alongside your cane.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 Built -->
+  <section class="chapter" id="built" aria-labelledby="h-built">
+    <div class="wrap">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>04</b> How we built it</span>
+          <h2 id="h-built">Five steps, twice a second.</h2>
+        </div>
+        <p class="lede">The phone sees and speaks. A small server asks a decision model a few navigation questions about each look, and plain code turns the answers into silence, words or the alarm.</p>
+      </div>
+
+      <div class="card pipe">
+        <div class="pipe-scroll">
+          <svg viewBox="0 0 1160 330" role="img" aria-label="Pipeline: See two frames, remember context, decide with four gates, route with thresholds, speak with voice or chime, ending in silence, words or the alarm. Alongside, a slower narrator keeps track of the walk every 4 seconds.">
+            <path class="pp-wire" d="M206 120 H 238 M 420 120 H 452 M 634 120 H 666 M 848 120 H 880"/>
+            <path class="pp-pulse" d="M206 120 H 880"/>
+            <g><rect class="pp-node" x="24" y="40" width="182" height="160" rx="14"/>
+              <text class="pp-n" x="44" y="72">01 SEE</text><text class="pp-t" x="44" y="100">Two frames</text>
+              <text class="pp-s" x="44" y="124">Now and 0.5 s ago, so</text><text class="pp-s" x="44" y="142">it can see what moves.</text>
+              <text class="pp-m" x="44" y="182">BROWSER CAMERA</text></g>
+            <g><rect class="pp-node" x="238" y="40" width="182" height="160" rx="14"/>
+              <text class="pp-n" x="258" y="72">02 REMEMBER</text><text class="pp-t" x="258" y="100">Context</text>
+              <text class="pp-s" x="258" y="124">What Echo just said,</text><text class="pp-s" x="258" y="142">walking, head tilt.</text>
+              <text class="pp-m" x="258" y="182">MOTION SENSORS</text></g>
+            <g><rect class="pp-node-hi" x="452" y="40" width="182" height="160" rx="14"/>
+              <text class="pp-n" x="472" y="72">03 DECIDE</text><text class="pp-t" x="472" y="100">Four gates</text>
+              <text class="pp-s" x="472" y="124">Stop, course, footing,</text><text class="pp-s" x="472" y="142">orient. Then what, where.</text>
+              <text class="pp-m" x="472" y="182">OPENAI DECISIONS API</text></g>
+            <g><rect class="pp-node" x="666" y="40" width="182" height="160" rx="14"/>
+              <text class="pp-n" x="686" y="72">04 ROUTE</text><text class="pp-t" x="686" y="100">Thresholds</text>
+              <text class="pp-s" x="686" y="124">Plain code. Alarms need</text><text class="pp-s" x="686" y="142">two frames to agree.</text>
+              <text class="pp-m" x="686" y="182">VERCEL FUNCTION</text></g>
+            <g><rect class="pp-node" x="880" y="40" width="182" height="160" rx="14"/>
+              <text class="pp-n" x="900" y="72">05 SPEAK</text><text class="pp-t" x="900" y="100">Voice or tone</text>
+              <text class="pp-s" x="900" y="124">Natural voice, phone</text><text class="pp-s" x="900" y="142">voice after 0.4 s.</text>
+              <text class="pp-m" x="900" y="182">GEMINI TTS · WEB AUDIO</text></g>
+            <path class="pp-wire" d="M971 200 V 240 M 812 240 H 1110 M 812 240 V 272 M 971 240 V 272 M 1110 240 V 272"/>
+            <rect class="pp-out-s" x="772" y="276" width="80" height="14" rx="7"/><text class="pp-o" x="812" y="312" text-anchor="middle">Silence</text>
+            <rect class="pp-out-v" x="931" y="276" width="80" height="14" rx="7"/><text class="pp-o" x="971" y="312" text-anchor="middle">Words</text>
+            <rect class="pp-out-a" x="1090" y="276" width="40" height="14" rx="7"/><text class="pp-o" x="1110" y="312" text-anchor="middle">Alarm</text>
+            <text class="pp-m" x="24" y="252">ROUND TRIP</text>
+            <text class="pp-s" x="24" y="274">A decision takes about 0.3 to 1 s, mostly network.</text>
+            <text class="pp-s" x="24" y="294">A late answer is dropped rather than spoken late.</text>
+            <text class="pp-m" x="400" y="252">ALONGSIDE</text>
+            <text class="pp-s" x="400" y="274">Every 4 s a slower narrator call</text>
+            <text class="pp-s" x="400" y="294">keeps track of the walk.</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="decision">
+        <div class="txt">
+          <span class="eyebrow">Why a decision model</span>
+          <h3 style="font-size:clamp(26px,2.6vw,34px);line-height:1.12;letter-spacing:-0.03em">A chat model gives you a sentence. A decision model gives you a number you can tune.</h3>
+          <p class="dim">Each question comes back as a probability, so "should Echo speak?" becomes a threshold we can test against recorded walks instead of a prompt we hope behaves.</p>
+          <p class="dim">It only charges for input, about a cent per minute of walking. <span class="tag">Estimate</span></p>
+        </div>
+        <div class="card qcard">
+          <div class="qcard-head"><span>One look · the questions</span><span class="tag">Example values</span></div>
+          <div class="q"><span class="nm">stop</span><span class="bar"><i style="width:6%"></i></span><span class="val">0.06</span><span class="ask">Will they walk into something, be hit or step off an edge in a step or two?</span></div>
+          <div class="q"><span class="nm">course</span><span class="bar"><i style="width:71%"></i></span><span class="val">0.71</span><span class="ask">Should they change direction?</span></div>
+          <div class="q"><span class="nm">footing</span><span class="bar"><i style="width:5%"></i></span><span class="val">0.05</span><span class="ask">Should they change pace or how they step?</span></div>
+          <div class="q"><span class="nm">orient</span><span class="bar"><i style="width:9%"></i></span><span class="val">0.09</span><span class="ask">Is there something that helps them find their way?</span></div>
+          <div class="q"><span class="nm">subject</span><span class="ch">chair</span></div>
+          <div class="q"><span class="nm">direction</span><span class="ch">ahead</span></div>
+          <div class="q"><span class="nm">distance</span><span class="ch">near · about 3.7 m from eye height and tilt</span></div>
+          <div class="q"><span class="nm">room</span><span class="ch">left 0.84 · right 0.29</span></div>
+          <div class="qcard-foot"><span class="dimmer mono" style="font-size:12px">course ≥ 0.55 · near · more room on the left</span><span class="out-pill">"Bear left. Chair ahead."</span></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div><span class="k">Decisions</span><span class="v">OpenAI Decisions API</span></div>
+        <div><span class="k">Voice</span><span class="v">Gemini TTS</span></div>
+        <div><span class="k">App and server</span><span class="v">Next.js on Vercel</span></div>
+        <div><span class="k">Alarm</span><span class="v">Web Audio</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="h-try">
+    <div class="cta">
+      <div>
+        <h2 id="h-try">Try Echo on your phone.</h2>
+        <p>The live demo runs the real app in your browser. Allow the camera, hold your phone at chest height, and walk.</p>
+      </div>
+      <a class="cta-btn" href="/demo"><span class="live" aria-hidden="true"></span>Open the live demo</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap foot">
+      <a class="brand" href="#top"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
+      <p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
+    </div>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var C = { ink: '#0B0D12', ink3: '#687080', line: '#E4E7EC', lineStrong: '#CBD1D9', voice: '#2F5BEA', alarm: '#D93A1E', silence: '#D3D8E0' };
+
+  function sizeCanvas(cv) {
+    var r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+    var g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0);
+    return { g: g, w: r.width, h: r.height };
+  }
+
+  /* Chapter nav highlights the chapter in view. */
+  var links = document.querySelectorAll('.chapters a');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('data-ch') === e.target.id); });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    ['problem', 'echo', 'different', 'built'].forEach(function (id) { io.observe(document.getElementById(id)); });
+  }
+
+  /* Hero: a walk down an office hallway, seen from above, with what Echo says along the way.
+     Map scale: 40 units = 1 m. Walking speed is about 1.1 m/s. */
+  var map = document.getElementById('map');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+  var mWalker = document.getElementById('walker'), mPerson = document.getElementById('o-person'), mDone = document.getElementById('route-done');
+  var mDets = document.getElementById('dets'), mPins = document.getElementById('pins'), mHalo = document.getElementById('halo');
+  var ear = document.getElementById('ear'), earK = document.getElementById('ear-k'), earW = document.getElementById('ear-w');
+  var nDec = document.getElementById('n-dec'), nSaid = document.getElementById('n-said'), nAlarm = document.getElementById('n-alarm');
+  var PX = 40, V = 44, X0 = 70, X1 = 1130, LOOPT = 30;
+  var STOP_AT = 780, STOP_FOR = 3.4;
+  var objs = [
+    { id: 'chair', x: 380, y: 262, w: 34, h: 34, col: '#E0870B', said: 232, k: 'v', text: 'Bear left. Chair ahead.', short: 'Bear left' },
+    { id: 'door', x: 624, y: 238, w: 46, h: 46, col: '#E0870B', said: 556, k: 'v', text: 'Keep right. Door on your left.', short: 'Keep right' },
+    { id: 'person', col: '#D93A1E', w: 38, h: 30, said: STOP_AT, k: 'a', text: 'Stop. Person in front. Wait.', short: 'Stop' }
+  ];
+  /* Walker position over time: walk, stop for the alarm, walk on, rest at the end. */
+  var tStop = (STOP_AT - X0) / V, tEnd = tStop + STOP_FOR + (X1 - STOP_AT) / V;
+  /* Bearing left around the chair, then back to the middle of the hallway. */
+  function walkerY(x) { var s1 = Math.max(0, Math.min(1, (x - 250) / 70)), s2 = Math.max(0, Math.min(1, (x - 420) / 70)); var e = function (u) { return u * u * (3 - 2 * u); }; return 260 - 30 * (e(s1) - e(s2)); }
+  function routeD(x0, x1) { var d = 'M' + x0 + ' ' + walkerY(x0).toFixed(1); for (var x = x0 + 6; x < x1; x += 6) d += 'L' + x + ' ' + walkerY(x).toFixed(1); return d + 'L' + x1 + ' ' + walkerY(x1).toFixed(1); }
+  function walkerX(t) { if (t < tStop) return X0 + V * t; if (t < tStop + STOP_FOR) return STOP_AT; return Math.min(X1, STOP_AT + V * (t - tStop - STOP_FOR)); }
+  /* The person leaves Office 4 and crosses into the kitchen. */
+  /* They step into the hallway just as the walker closes in, pause, then carry on once the walker has stopped. */
+  var tPerson = tStop - 2.2;
+  function personPos(t) {
+    var y;
+    if (t < tPerson) y = 420;
+    else if (t < tStop) y = 420 - (t - tPerson) / 2.2 * 156;
+    else if (t < tStop + 2.2) y = 264;
+    else y = Math.max(110, 264 - (t - tStop - 2.2) * 60);
+    return { x: 846, y: y, on: t > tPerson - 0.1 && y > 112 };
+  }
+  var narrow = false, panX = 0;
+  function frame(t) {
+    var wx = walkerX(t), p = personPos(t);
+    objs[2].x = p.x; objs[2].y = p.y;
+    var wy = walkerY(wx), wa = Math.atan2(walkerY(wx + 2) - walkerY(wx - 2), 4) * 180 / Math.PI;
+    mWalker.setAttribute('transform', 'translate(' + wx + ' ' + wy.toFixed(1) + ') rotate(' + wa.toFixed(1) + ')');
+    mDone.setAttribute('d', routeD(X0, wx));
+    mPerson.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')');
+    mPerson.style.opacity = p.on ? 1 : 0;
+    mHalo.setAttribute('r', 16 + 4 * Math.sin(t * 4));
+    /* Detections: anything inside the camera's view, up to about 4.5 m ahead. */
+    while (mDets.firstChild) mDets.removeChild(mDets.firstChild);
+    /* Like the app, Echo attends to one thing at a time: the nearest one in view. */
+    var seen = objs.filter(function (o) {
+      var dx = o.x - wx, dy = o.y - walkerY(wx);
+      if (o.id === 'person' && !p.on) return false;
+      return !(dx < 8 || dx > 180 || Math.abs(dy) > dx * 0.58 + 16);
+    }).sort(function (a, b) { return a.x - b.x; }).slice(0, 1);
+    seen.forEach(function (o) {
+      var dx = o.x - wx, dy = o.y - walkerY(wx);
+      var g = el('g', {}, mDets);
+      el('rect', { x: o.x - o.w / 2, y: o.y - o.h / 2, width: o.w, height: o.h, rx: 3, fill: 'none', stroke: o.col, 'stroke-width': 1.8 }, g);
+      var lab = o.id + ' ' + (Math.hypot(dx, dy) / PX).toFixed(1) + ' m', lw = lab.length * 6.6 + 10;
+      el('rect', { x: o.x - o.w / 2, y: o.y - o.h / 2 - 17, width: lw, height: 16, rx: 2, fill: o.col }, g);
+      var tx = el('text', { x: o.x - o.w / 2 + 5, y: o.y - o.h / 2 - 5, fill: '#FFFFFF', 'font-family': 'Geist Mono, ui-monospace, monospace', 'font-size': 10.5 }, g);
+      tx.textContent = lab;
+    });
+    /* What the walker hears, and the pins left on the map. */
+    var last = null, said = 0, alarms = 0;
+    while (mPins.firstChild) mPins.removeChild(mPins.firstChild);
+    objs.forEach(function (o, i) {
+      var tSaid = o.id === 'person' ? tStop : (o.said - X0) / V;
+      if (t < tSaid) return;
+      if (o.k === 'a') alarms++; else said++;
+      last = { o: o, age: t - tSaid };
+      var col = o.k === 'a' ? '#D93A1E' : '#2F5BEA', bx = o.said, up = i !== 1;
+      var g = el('g', { transform: 'translate(' + bx + ' ' + walkerY(bx).toFixed(1) + ')' }, mPins);
+      el('circle', { r: 6, fill: col, stroke: '#FFFFFF', 'stroke-width': 2.5 }, g);
+      var by = up ? -58 : 58, txt = narrow ? o.short : o.text, bw = txt.length * 7.4 + 28;
+      el('line', { x1: 0, y1: up ? -6 : 6, x2: 0, y2: up ? by + 16 : by - 16, stroke: col, 'stroke-width': 1.5 }, g);
+      el('rect', { x: -bw / 2, y: by - 16, width: bw, height: 32, rx: 16, fill: o.k === 'a' ? '#D93A1E' : '#FFFFFF', stroke: o.k === 'a' ? 'none' : '#D5DAE1', filter: 'url(#pin-sh)' }, g);
+      var tt = el('text', { x: 0, y: by + 5, 'text-anchor': 'middle', fill: o.k === 'a' ? '#FFFFFF' : '#0B0D12', 'font-family': 'Geist, system-ui, sans-serif', 'font-size': 13.5, 'font-weight': 500 }, g);
+      tt.textContent = (o.k === 'a' ? '' : '“') + txt + (o.k === 'a' ? '' : '”');
+    });
+    nDec.textContent = Math.floor(t * 2); nSaid.textContent = said; nAlarm.textContent = alarms;
+    var live = last && last.age < (last.o.k === 'a' ? 3.4 : 2.4);
+    ear.className = 'ear' + (live ? ' ' + last.o.k : '');
+    earK.textContent = live ? (last.o.k === 'a' ? 'Chime, then' : 'In your ear') : 'In your ear';
+    earW.textContent = live ? last.o.text : (t >= tEnd ? 'Arrived. Two phrases and one alarm.' : 'Nothing. Echo stays quiet.');
+    if (narrow) {
+      var vw = 560, cx = Math.max(vw / 2, Math.min(1200 - vw / 2, wx + 120));
+      panX += (cx - vw / 2 - panX) * 0.12;
+      map.setAttribute('viewBox', panX.toFixed(1) + ' 60 ' + vw + ' 400');
+    }
+  }
+  function fitMap() { narrow = map.getBoundingClientRect().width < 700; if (!narrow) map.setAttribute('viewBox', '0 0 1200 520'); }
+  fitMap();
+  document.getElementById('route-ahead').setAttribute('d', routeD(X0, X1));
+  var mapT0 = performance.now(), mapVisible = true;
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { mapVisible = es[0].isIntersecting; }).observe(map);
+  function mapLoop(now) {
+    if (mapVisible) frame(((now - mapT0) / 1000) % LOOPT);
+    requestAnimationFrame(mapLoop);
+  }
+  if (reduce) { narrow = false; map.setAttribute('viewBox', '0 0 1200 520'); frame(LOOPT - 0.1); }
+  else requestAnimationFrame(mapLoop);
+
+  /* Trio waves. */
+  document.querySelectorAll('.wave').forEach(function (el) {
+    var kind = el.getAttribute('data-w');
+    for (var i = 0; i < 48; i++) {
+      var hgt = 2;
+      if (kind === 'voice' && i > 8 && i < 22) hgt = 4 + Math.round(22 * Math.abs(Math.sin(i * 1.7)) * Math.sin((i - 8) / 14 * Math.PI));
+      if (kind === 'alarm' && i > 4 && i < 12) hgt = 32;
+      if (kind === 'alarm' && i > 14 && i < 30) hgt = 4 + Math.round(20 * Math.abs(Math.sin(i * 1.3)) * Math.sin((i - 14) / 16 * Math.PI));
+      var b = document.createElement('i'); b.style.height = hgt + 'px'; el.appendChild(b);
+    }
+  });
+
+  /* Lanes: the same walk, heard four ways. */
+  (function () {
+    var svg = document.getElementById('lanes'), NS = 'http://www.w3.org/2000/svg';
+    var X0 = 220, X1 = 1140, T = 30;
+    function X(t) { return X0 + (t / T) * (X1 - X0); }
+    function el(tag, attrs, text) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; svg.appendChild(e); return e; }
+    el('rect', { 'class': 'ln-echo-band', x: 0, y: 330, width: 1160, height: 92, rx: 10 });
+    var obs = [{ t: 9, n: 'CHAIR' }, { t: 17, n: 'DOOR' }, { t: 25, n: 'PERSON' }];
+    obs.forEach(function (o) { el('line', { 'class': 'ln-guide', x1: X(o.t), x2: X(o.t), y1: 32, y2: 430 }); el('text', { 'class': 'ln-ev', x: X(o.t), y: 22, 'text-anchor': 'middle' }, o.n); });
+    [{ y: 86, l: 'Narrator', s: 'Talks the whole way' }, { y: 184, l: 'Describer', s: 'Silent unless asked' }, { y: 282, l: 'Obstacle wearable', s: 'Beeps, no words' }, { y: 380, l: 'Echo', s: 'Quiet until it matters' }].forEach(function (ln) {
+      el('text', { 'class': 'ln-label', x: 16, y: ln.y - 4 }, ln.l);
+      el('text', { 'class': 'ln-sub', x: 16, y: ln.y + 14 }, ln.s);
+      el('line', { 'class': 'ln-base', x1: X0, x2: X1, y1: ln.y, y2: ln.y });
+    });
+    var t = 0.3, k = 0;
+    var lines = ['"A hallway with a grey floor…"', '"A poster on the wall…"', '"A chair to the right…"', '"Two people talking…"', '"A door on the left…"', '"A person on the right…"'];
+    while (t < 29.4) {
+      var len = 1.6 + ((k * 7) % 5) * 0.35, end = Math.min(t + len, 29.8);
+      el('rect', { 'class': 'ln-chatter', x: X(t), y: 79, width: Math.max(2, X(end) - X(t)), height: 14, rx: 3, opacity: 0.4 });
+      if (k % 3 === 0 && k / 3 < lines.length) el('text', { 'class': 'ln-sub', x: X(t), y: 66 }, lines[k / 3]);
+      t += len + 0.25; k++;
+    }
+    el('path', { 'class': 'ln-ask', d: 'M' + X(19) + ' 166 l -5 -9 h 10 z' });
+    el('text', { 'class': 'ln-sub', x: X(19) + 10, y: 162 }, 'You stop and ask');
+    el('rect', { 'class': 'ln-chatter', x: X(19.6), y: 177, width: X(23.6) - X(19.6), height: 14, rx: 3, opacity: 0.4 });
+    el('text', { 'class': 'ln-sub', x: X(19.6), y: 210 }, '"There is a door on your left…"');
+    for (var s = 0.5; s < 30; s += 0.25) {
+      var near = obs.some(function (o) { return o.t - s > 0 && o.t - s < 3.2; });
+      var dense = obs.some(function (o) { return o.t - s > 0 && o.t - s < 1.4; });
+      if (!near) continue;
+      if (!dense && Math.round(s * 4) % 3) continue;
+      el('circle', { 'class': 'ln-beep', cx: X(s), cy: 282, r: 3.2 });
+    }
+    el('rect', { 'class': 'ln-voice', x: X(6.6), y: 373, width: X(7.9) - X(6.6), height: 14, rx: 3 });
+    el('text', { 'class': 'ln-word', x: X(6.6), y: 360 }, '"Bear left. Chair ahead."');
+    el('rect', { 'class': 'ln-voice', x: X(14.4), y: 373, width: X(15.6) - X(14.4), height: 14, rx: 3 });
+    el('text', { 'class': 'ln-word', x: X(14.4), y: 360 }, '"Keep right. Door on your left."');
+    el('rect', { 'class': 'ln-alarm', x: X(23.4), y: 366, width: X(23.9) - X(23.4), height: 28, rx: 2 });
+    el('rect', { 'class': 'ln-alarm', x: X(24.05), y: 373, width: X(25.4) - X(24.05), height: 14, rx: 3 });
+    el('text', { 'class': 'ln-word-a', x: X(23.4), y: 352 }, 'Chime · "Stop. Person in front."');
+    [0, 10, 20, 30].forEach(function (s) { el('text', { 'class': 'ln-axis', x: X(s), y: 458, 'text-anchor': s === 0 ? 'start' : s === 30 ? 'end' : 'middle' }, s + ' s'); });
+  })();
+
+  /* The demo console. The scene and scores are simulated; the routing mirrors toAnnouncement() in
+     web/src/lib/decisions.ts and the phrasing mirrors toSegments() in web/src/lib/announce.ts. */
+  var view = document.getElementById('view'), cv = document.getElementById('walk');
+  var capEl = document.getElementById('caption'), outEl = document.getElementById('out'), outBox = document.getElementById('outcome');
+  var frameEl = document.getElementById('frame'), focusEl = document.getElementById('focus'), aroundEl = document.getElementById('around'), logEl = document.getElementById('log'), latEl = document.getElementById('lat');
+  var stripEl = document.getElementById('strip');
+  for (var i = 0; i < 60; i++) stripEl.appendChild(document.createElement('i'));
+  var LOOP = 32, SPEED = 1.15, CAMH = 1.6, HALF = 1.4, CEIL = 2.7;
+  var TH = { stop: 0.8, act: 0.55, orient: 0.65, raise: 0.1, easeS: 8, gapS: 4, confirmWin: 2.5, alarmGapS: 8, samePhraseS: 12, closeM: 1.5, nearM: 4, closeS: 1.5, roomMin: 0.5 };
+  var CAUTION = '#E0870B';
+  var objects = [
+    { id: 'chair', name: 'chair', z: 10, x: 0.15, w: 0.5, d: 0.5, y0: 0, y1: 0.9, face: '#8C96A3', room: [0.84, 0.29] },
+    { id: 'door', name: 'door', z: 18, x: -1.05, w: 0.7, d: 0.06, y0: 1.35, y1: 2.0, face: '#C9B79C', room: [0.18, 0.86] },
+    { id: 'person', name: 'person', z: 27, x: 1.9, w: 0.46, d: 0.3, y0: 0, y1: 1.5, head: true, face: '#4B5565', moving: true, room: [0.21, 0.17] }
+  ];
+  var doors = [{ z: 6, side: 1 }, { z: 13, side: -1 }, { z: 22, side: -1 }, { z: 25.4, side: 1 }];
+  var st = { pOff: 0, camZ: 0, camX: 0, camXT: 0, playing: !reduce, stopUntil: 0, lastT: 0, decT: 0, narT: 0, frame: 0, sound: false, capUntil: 0, clock: 0, log: [], hist: [], recent: [], focus: null, alarmAt: -99 };
+  var dims = sizeCanvas(cv);
+  window.addEventListener('resize', function () { dims = sizeCanvas(cv); if (!st.playing) drawWorld(); fitMap(); if (reduce) frame(LOOPT - 0.1); });
+
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+  function rel(o) { return ((o.z - st.camZ) % LOOP + LOOP) % LOOP; }
+  /* The person waits in a doorway on the right, steps out into the path, and moves on once the wearer stops. */
+  function personX(dz) { if (dz > 3.6) return 1.75; return Math.max(-2.4, Math.max(0.1, 1.75 - (3.6 - dz) / 0.8 * 1.65) - st.pOff); }
+  function objX(o, dz) { return o.moving ? personX(dz) : o.x; }
+  function proj(x, y, dz) {
+    var f = Math.min(dims.w, dims.h * 1.5) * 0.62, cx = dims.w / 2, cy = dims.h * 0.46;
+    return [cx + f * (x - st.camX) / dz, cy - f * (y - CAMH) / dz];
+  }
+  function poly(g, pts, fill, stroke) {
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    for (var k = 1; k < pts.length; k++) g.lineTo(pts[k][0], pts[k][1]);
+    g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.stroke(); }
+  }
+  function seg(g, a, b) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); }
+  function rgba(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  function toneOf(f) { if (f.g.stop >= 0.5) return C.alarm; if (Math.max(f.g.course, f.g.footing) >= 0.5) return CAUTION; return C.voice; }
+
+  function drawWorld() {
+    var g = dims.g, w = dims.w, h = dims.h, near = 0.45, far = 34;
+    poly(g, [proj(-HALF, CEIL, near), proj(HALF, CEIL, near), proj(HALF, CEIL, far), proj(-HALF, CEIL, far)], '#F1F3F6');
+    poly(g, [proj(-HALF, 0, near), proj(-HALF, CEIL, near), proj(-HALF, CEIL, far), proj(-HALF, 0, far)], '#E3E7EC');
+    poly(g, [proj(HALF, 0, near), proj(HALF, CEIL, near), proj(HALF, CEIL, far), proj(HALF, 0, far)], '#DCE1E7');
+    var vp = proj(0, CAMH, far), fl = g.createLinearGradient(0, h, 0, vp[1]);
+    fl.addColorStop(0, '#C9CFD7'); fl.addColorStop(1, '#E7EAEE');
+    poly(g, [proj(-HALF, 0, near), proj(HALF, 0, near), proj(HALF, 0, far), proj(-HALF, 0, far)], fl);
+    var base = Math.floor(st.camZ / 3) * 3;
+    for (var zz = base; zz < st.camZ + far; zz += 3) {
+      var dz = zz - st.camZ; if (dz < 1) continue;
+      poly(g, [proj(-0.35, CEIL, dz), proj(0.35, CEIL, dz), proj(0.35, CEIL, dz + 0.6), proj(-0.35, CEIL, dz + 0.6)], '#FFFFFF');
+    }
+    base = Math.floor(st.camZ / 1.2) * 1.2;
+    g.lineWidth = 1;
+    for (zz = base; zz < st.camZ + far; zz += 1.2) {
+      dz = zz - st.camZ; if (dz < near) continue;
+      g.strokeStyle = 'rgba(70,80,95,' + Math.max(0, 0.14 * (1 - dz / far)).toFixed(3) + ')';
+      seg(g, proj(-HALF, 0, dz), proj(HALF, 0, dz));
+    }
+    g.strokeStyle = 'rgba(70,80,95,0.18)';
+    seg(g, proj(-HALF, 0.1, near), proj(-HALF, 0.1, far)); seg(g, proj(HALF, 0.1, near), proj(HALF, 0.1, far));
+    doors.forEach(function (d) {
+      var dz = ((d.z - st.camZ) % LOOP + LOOP) % LOOP; if (dz < near || dz > far) return;
+      var x = d.side * HALF;
+      poly(g, [proj(x, 0, dz), proj(x, 2.1, dz), proj(x, 2.1, dz + 0.95), proj(x, 0, dz + 0.95)], d.side > 0 ? '#B9C1CB' : '#C3CAD3', 'rgba(70,80,95,0.25)');
+    });
+    var glow = g.createRadialGradient(vp[0], vp[1], 0, vp[0], vp[1], Math.max(w, h) * 0.35);
+    glow.addColorStop(0, 'rgba(255,255,255,0.85)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, w, h);
+
+    var list = objects.map(function (o) { var dz = rel(o); return { o: o, dz: dz, x: objX(o, dz) }; })
+      .filter(function (e) { return e.dz > near && e.dz < far; })
+      .sort(function (a, b) { return b.dz - a.dz; });
+    var centers = {};
+    list.forEach(function (e) {
+      var o = e.o, x0 = e.x - o.w / 2, x1 = e.x + o.w / 2, z0 = e.dz, z1 = e.dz + o.d;
+      var top = [proj(x0, o.y1, z0), proj(x1, o.y1, z0), proj(x1, o.y1, z1), proj(x0, o.y1, z1)];
+      var front = [proj(x0, o.y0, z0), proj(x1, o.y0, z0), proj(x1, o.y1, z0), proj(x0, o.y1, z0)];
+      var sideX = e.x - st.camX > 0 ? x0 : x1;
+      var side = [proj(sideX, o.y0, z0), proj(sideX, o.y1, z0), proj(sideX, o.y1, z1), proj(sideX, o.y0, z1)];
+      poly(g, [proj(x0 - 0.05, 0, z0), proj(x1 + 0.05, 0, z0), proj(x1 + 0.05, 0, z1 + 0.1), proj(x0 - 0.05, 0, z1 + 0.1)], 'rgba(30,40,55,0.12)');
+      poly(g, side, shade(o.face, -18)); poly(g, top, shade(o.face, 22)); poly(g, front, o.face);
+      var r = 0;
+      if (o.head) {
+        var hc = proj(e.x, o.y1 + 0.13, z0 + 0.12); r = (Math.min(dims.w, dims.h * 1.5) * 0.62) * 0.12 / (z0 + 0.12);
+        g.beginPath(); g.arc(hc[0], hc[1], r, 0, Math.PI * 2); g.fillStyle = shade(o.face, 10); g.fill();
+      }
+      var c = proj(e.x, (o.y0 + o.y1) / 2 + (o.head ? 0.1 : 0), z0), size = Math.abs(front[1][0] - front[0][0]), hgt = Math.abs(front[2][1] - front[1][1]) + r * 2;
+      centers[o.id] = { c: c, s: Math.max(size, hgt) };
+    });
+    drawOverlay(g, w, h, centers);
+  }
+
+  /* What the app itself draws over the camera: a soft halo on the one thing Echo is paying
+     attention to, with its name and distance (see FocusHalo in Hud.tsx). The thirds and the
+     ground ruler show how the model's answers map onto the frame. */
+  function drawOverlay(g, w, h, centers) {
+    g.save();
+    g.setLineDash([3, 5]); g.strokeStyle = 'rgba(11,13,18,0.12)'; g.lineWidth = 1;
+    seg(g, [w / 3, 34], [w / 3, h]); seg(g, [2 * w / 3, 34], [2 * w / 3, h]);
+    g.setLineDash([]);
+    g.font = '500 10.5px "Geist Mono", ui-monospace, monospace'; g.textAlign = 'center'; g.fillStyle = 'rgba(70,77,91,0.55)';
+    var dir = st.focus && st.focus.dir;
+    ['left', 'ahead', 'right'].forEach(function (d, k) {
+      g.fillStyle = dir === d ? 'rgba(11,13,18,0.75)' : 'rgba(70,77,91,0.45)';
+      g.fillText(d.toUpperCase(), w * (k * 2 + 1) / 6, h - 14);
+    });
+    // Ground ruler: eye height and camera tilt turn a row of the frame into metres.
+    g.textAlign = 'right'; g.fillStyle = 'rgba(70,77,91,0.7)';
+    var lastY = 1e9;
+    [2, 3, 4, 6].forEach(function (m) {
+      var y = proj(0, 0, m)[1]; if (y > h - 30 || y < 40 || lastY - y < 22) return; lastY = y;
+      g.strokeStyle = 'rgba(11,13,18,0.28)'; seg(g, [w - 12, y], [w - 2, y]);
+      g.fillText(m + ' m', w - 16, y + 3.5);
+    });
+    var f = st.focus;
+    if (f && f.o && centers[f.o.id] && Math.max(f.g.stop, f.g.course, f.g.footing, f.g.orient) >= 0.25) {
+      var c = centers[f.o.id], col = toneOf(f), R = Math.max(26, Math.min(w * 0.16, c.s * 0.6));
+      c = { c: [Math.max(R * 0.6, Math.min(w - R * 0.6, c.c[0])), Math.max(60 + R * 0.4, Math.min(h - 90 - R * 0.4, c.c[1]))], s: c.s };
+      var rg = g.createRadialGradient(c.c[0], c.c[1], R * 0.2, c.c[0], c.c[1], R);
+      rg.addColorStop(0, rgba(col, 0.32)); rg.addColorStop(1, rgba(col, 0.12));
+      g.beginPath(); g.arc(c.c[0], c.c[1], R, 0, Math.PI * 2); g.fillStyle = rg; g.fill();
+      g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.stroke();
+      var name = f.o.name.charAt(0).toUpperCase() + f.o.name.slice(1), dist = ' · about ' + f.m.toFixed(1) + ' m';
+      g.font = '600 13px Geist, system-ui, sans-serif'; var nw = g.measureText(name).width;
+      g.font = '400 13px Geist, system-ui, sans-serif'; var dw = g.measureText(dist).width;
+      var pw = nw + dw + 24, px = Math.max(4, Math.min(w - pw - 4, c.c[0] - pw / 2)), py = Math.min(h - 58, c.c[1] + R + 8);
+      g.shadowColor = 'rgba(16,24,40,0.18)'; g.shadowBlur = 10; g.shadowOffsetY = 2;
+      g.beginPath(); g.roundRect ? g.roundRect(px, py, pw, 26, 13) : g.rect(px, py, pw, 26); g.fillStyle = '#FFFFFF'; g.fill();
+      g.shadowColor = 'transparent';
+      g.textAlign = 'left'; g.fillStyle = '#0B0D12'; g.font = '600 13px Geist, system-ui, sans-serif'; g.fillText(name, px + 12, py + 17.5);
+      g.fillStyle = '#687080'; g.font = '400 13px Geist, system-ui, sans-serif'; g.fillText(dist, px + 12 + nw, py + 17.5);
+    }
+    g.restore();
+  }
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16), r = Math.max(0, Math.min(255, (n >> 16) + amt)), g2 = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt)), b = Math.max(0, Math.min(255, (n & 255) + amt));
+    return 'rgb(' + r + ',' + g2 + ',' + b + ')';
+  }
+
+  function setBar(name, v, line) {
+    var b = document.getElementById('b-' + name); b.classList.toggle('hot', v >= line && name === 'stop');
+    b.firstElementChild.style.width = (clamp01(v) * 100).toFixed(0) + '%';
+    document.getElementById('v-' + name).textContent = v.toFixed(2);
+  }
+  function fmt(t) { var m = Math.floor(t / 60), s = (t % 60).toFixed(1); return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; }
+  function noise(a) { return (Math.random() - 0.5) * 2 * a; }
+
+  /* Simulated answers for the thing nearest the wearer. */
+  function look() {
+    var best = null;
+    objects.forEach(function (o) {
+      var dz = rel(o); if (dz < 0.6 || dz > 6.5) return;
+      if (o.moving && dz > 6.5) return;
+      if (!best || dz < best.dz) best = { o: o, dz: dz, x: objX(o, dz) - st.camX };
+    });
+    var quiet = { stop: 0.02 + Math.random() * 0.03, course: 0.06 + Math.random() * 0.08, footing: 0.03 + Math.random() * 0.05, orient: 0.06 + Math.random() * 0.08 };
+    if (!best) return { o: null, g: quiet, dir: 'ahead', m: 0, room: [0.8, 0.8] };
+    var ang = best.x / best.dz, dir = Math.abs(ang) < 0.2 ? 'ahead' : ang < 0 ? 'left' : 'right', inPath = Math.abs(best.x) < 0.55, dz = best.dz;
+    var g = { stop: quiet.stop, course: quiet.course, footing: quiet.footing, orient: quiet.orient };
+    if (best.o.id === 'chair') {
+      g.course = inPath ? clamp01(0.18 + 0.8 * clamp01((5.2 - dz) / 3) + noise(0.03)) : 0.14 + noise(0.04);
+      g.stop = inPath ? clamp01(0.7 * clamp01((2.2 - dz) / 1.6)) : 0.04;
+    } else if (best.o.id === 'door') {
+      g.course = clamp01(0.12 + 0.5 * clamp01((2.6 - dz) / 1.0) + noise(0.03));
+      g.orient = 0.22 + noise(0.04);
+    } else {
+      g.stop = inPath ? clamp01(0.35 + 0.65 * clamp01((3.4 - dz) / 1.6) + noise(0.03)) : 0.12 + noise(0.04);
+      g.course = inPath ? clamp01(0.45 + 0.4 * clamp01((2.6 - dz) / 1.2)) : 0.2 + noise(0.05);
+    }
+    return { o: best.o, g: g, dir: dir, m: dz + noise(0.08), room: best.o.room };
+  }
+
+  function distanceOf(m) { if (m <= TH.closeM || m / SPEED <= TH.closeS) return 'close'; return m <= TH.nearM ? 'near' : 'far'; }
+  function wordsBar(base, sinceSpoke) { var t = (sinceSpoke - TH.gapS) / (TH.easeS - TH.gapS); return t < 1 ? base + TH.raise * (1 - Math.max(0, t)) : base; }
+  function guidance(f, distance, urgent) {
+    var close = urgent || distance === 'close';
+    if (f.dir !== 'ahead') return close ? (f.dir === 'left' ? 'Keep right.' : 'Keep left.') : null;
+    if (distance === 'far' && !urgent) return null;
+    if (Math.max(f.room[0], f.room[1]) < TH.roomMin) return close && f.o.moving ? 'Wait.' : null;
+    var side = f.room[0] >= f.room[1] ? 'left' : 'right';
+    return (close ? 'Step ' : 'Bear ') + side + '.';
+  }
+  function place(dir, close) { return dir === 'ahead' ? (close ? 'in front' : 'ahead') : 'on your ' + dir; }
+
+  /* Silence, words or the alarm. Mirrors toAnnouncement(): the alarm is for things that move and
+     needs two frames to agree; words wait 4 s after Echo last spoke and need a higher bar right after. */
+  function route(f, now) {
+    var sinceSpoke = Math.min.apply(null, [1e9].concat(st.recent.map(function (r) { return st.clock - r.t; })));
+    var sinceAlarm = Math.min.apply(null, [1e9].concat(st.recent.filter(function (r) { return r.urgent; }).map(function (r) { return st.clock - r.t; })));
+    var win = st.hist.filter(function (h) { return st.clock - h.t <= TH.confirmWin; }).slice(-2);
+    var confirmed = f.g.stop >= TH.stop && 1 + win.filter(function (h) { return h.stop >= TH.stop; }).length >= 2;
+    if (!f.o) return null;
+    var name = f.o.name.charAt(0).toUpperCase() + f.o.name.slice(1), distance = distanceOf(f.m);
+    if (f.g.stop >= TH.stop && f.o.moving) {
+      if (!confirmed || sinceAlarm < TH.alarmGapS) return null;
+      var cmd = guidance(f, distance, true);
+      return { kind: 'a', gate: 'stop', text: 'Stop. ' + name + ' ' + place(f.dir, true) + '.' + (cmd ? ' ' + cmd : '') };
+    }
+    if (f.g.stop >= TH.stop) return null;
+    if (sinceSpoke < TH.gapS) return null;
+    var gate = f.g.course >= wordsBar(TH.act, sinceSpoke) ? 'course' : f.g.orient >= wordsBar(TH.orient, sinceSpoke) ? 'orient' : null;
+    if (!gate) return null;
+    var close = distance === 'close', g = gate === 'course' ? guidance(f, distance, false) : null;
+    var text = (g ? g + ' ' : '') + name + ' ' + place(f.dir, close) + '.';
+    if (st.recent.some(function (r) { return r.text === text && st.clock - r.t < TH.samePhraseS; })) return null;
+    return { kind: 'v', gate: gate, text: text, cmd: g };
+  }
+
+  function renderFocus(f) {
+    if (!f.o) { focusEl.innerHTML = '<dt>subject</dt><dd>other</dd><dt>direction</dt><dd>ahead</dd><dt>distance</dt><dd>far</dd><dt>way around</dt><dd class="m">n/a</dd>'; return; }
+    var d = distanceOf(f.m);
+    focusEl.innerHTML = '<dt>subject</dt><dd>' + f.o.name + '</dd><dt>direction</dt><dd>' + f.dir + '</dd><dt>distance</dt><dd>' + d + ' <span class="m">· ' + f.m.toFixed(1) + ' m</span></dd>' +
+      '<dt>way around</dt><dd class="m">left ' + f.room[0].toFixed(2) + ' · right ' + f.room[1].toFixed(2) + '</dd>';
+  }
+  function renderLog() {
+    logEl.innerHTML = st.log.length ? st.log.slice(0, 3).map(function (l) {
+      return '<li><span class="t">' + fmt(l.t) + '</span><span class="' + (l.k === 'a' ? 'a' : '') + '">' + (l.k === 'a' ? 'Chime · ' : '') + l.p + '</span></li>';
+    }).join('') : '<li><span class="empty">Nothing yet. That\'s normal.</span></li>';
+  }
+  function narrate() {
+    var note;
+    if (st.clock - st.alarmAt < 7) note = 'A hallway outside an office. Someone crossed in front of you, and you stopped.';
+    else if (st.camZ < 8.5) note = 'An indoor hallway with doors on both sides. You\'re walking straight at a steady pace.';
+    else if (st.camZ < 15) note = 'A long office hallway. Echo told you about a chair, and you moved left of it.';
+    else if (st.camZ < 23) note = 'Still in the hallway, offices on both sides. You passed the chair and are walking straight.';
+    else note = 'Near the end of the hallway, by an office door. Walking straight.';
+    if (note === aroundEl.textContent) return;
+    aroundEl.classList.add('fade');
+    setTimeout(function () { aroundEl.textContent = note; aroundEl.classList.remove('fade'); }, 250);
+  }
+
+  function decide(now) {
+    var f = look(); st.focus = f;
+    var a = route(f, now);
+    st.hist.push({ t: st.clock, stop: f.g.stop }); if (st.hist.length > 6) st.hist.shift();
+    setBar('stop', f.g.stop, TH.stop); setBar('course', f.g.course, TH.act); setBar('footing', f.g.footing, TH.act); setBar('orient', f.g.orient, TH.orient);
+    latEl.textContent = Math.round(320 + Math.random() * 380) + ' ms';
+    var kind = a ? a.kind : 's';
+    outBox.className = 'outcome' + (kind === 'a' ? ' a' : kind === 'v' ? ' v' : '');
+    outEl.textContent = kind === 'a' ? 'Alarm · stop' : kind === 'v' ? 'Words · ' + a.gate : 'Silence';
+    var tick = document.createElement('i'); if (kind !== 's') tick.className = kind;
+    stripEl.appendChild(tick); if (stripEl.children.length > 60) stripEl.removeChild(stripEl.firstChild);
+    st.frame++; frameEl.textContent = 'Frame ' + String(st.frame).padStart(4, '0');
+    renderFocus(f);
+    if (!a) return;
+    st.recent.push({ t: st.clock, text: a.text, urgent: kind === 'a' }); if (st.recent.length > 8) st.recent.shift();
+    if (kind === 'a') { st.stopUntil = now + 3000; st.alarmAt = st.clock; }
+    if (a.cmd && /left/.test(a.cmd) && f.o.id === 'chair') st.camXT = -0.6;
+    st.log.unshift({ t: st.clock, p: a.text, k: kind }); renderLog(); announce(kind, a.text, now);
+  }
+
+  function announce(kind, phrase, now) {
+    capEl.textContent = phrase; capEl.className = 'caption show' + (kind === 'a' ? ' alarm' : '');
+    st.capUntil = now + 2600;
+    if (kind === 'a') { view.classList.add('alarming'); setTimeout(function () { view.classList.remove('alarming'); }, 900); }
+    if (!st.sound) return;
+    if (kind === 'a') chime(function () { say(phrase); }); else say(phrase);
+  }
+  /* Echo's one sound: two soft falling chimes, C6 then G5 (web/src/lib/alarm.ts). */
+  var actx = null;
+  function chime(done) {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) { done(); return; }
+      actx = actx || new AC(); if (actx.state === 'suspended') actx.resume();
+      var t0 = actx.currentTime + 0.01, out = actx.createGain(); out.gain.value = 0.3; out.connect(actx.destination);
+      var last;
+      [[1046.5, 0], [784, 0.16]].forEach(function (n) {
+        var t = t0 + n[1], osc = actx.createOscillator(), env = actx.createGain();
+        osc.type = 'sine'; osc.frequency.value = n[0];
+        env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(1, t + 0.01); env.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.connect(env).connect(out); osc.start(t); osc.stop(t + 0.22); last = osc;
+      });
+      last.onended = done;
+    } catch (e) { done(); }
+  }
+  function say(text) { try { if (!window.speechSynthesis) return; speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(text); u.rate = 1.1; speechSynthesis.speak(u); } catch (e) {} }
+
+  var visible = true;
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }, { threshold: 0.05 }).observe(view);
+
+  function frameLoop(now) {
+    if (!st.lastT) st.lastT = now;
+    var dt = Math.min(0.05, (now - st.lastT) / 1000); st.lastT = now;
+    if (st.playing && visible) {
+      st.clock += dt;
+      if (now > st.stopUntil) {
+        var prev = st.camZ;
+        st.camZ = (st.camZ + SPEED * dt) % LOOP;
+        if (st.camZ < prev) { st.hist = []; st.recent = []; st.pOff = 0; st.camXT = 0; }
+      } else st.pOff += 1.1 * dt;
+      if (st.camXT && st.camZ > 10.8) st.camXT = 0;
+      st.camX += (st.camXT - st.camX) * Math.min(1, dt * 2.2);
+      st.decT += dt; st.narT += dt;
+      if (st.decT >= 0.5) { st.decT = 0; decide(now); }
+      if (st.narT >= 4) { st.narT = 0; narrate(); }
+      if (now > st.capUntil) capEl.className = 'caption';
+      drawWorld();
+    }
+    requestAnimationFrame(frameLoop);
+  }
+  function stillFrame() {
+    st.camZ = 6.3;
+    st.focus = { o: objects[0], g: { stop: 0.03, course: 0.71, footing: 0.05, orient: 0.09 }, dir: 'ahead', m: 3.7, room: objects[0].room };
+    drawWorld(); renderFocus(st.focus);
+    setBar('stop', 0.03, TH.stop); setBar('course', 0.71, TH.act); setBar('footing', 0.05, TH.act); setBar('orient', 0.09, TH.orient);
+    st.log = [{ t: 5.5, p: 'Bear left. Chair ahead.', k: 'v' }]; renderLog();
+    capEl.textContent = 'Bear left. Chair ahead.'; capEl.className = 'caption show';
+    outBox.className = 'outcome v'; outEl.textContent = 'Words · course';
+  }
+  if (reduce) { stillFrame(); document.getElementById('pp').textContent = 'Play'; }
+  else { drawWorld(); renderFocus({ o: null }); }
+  requestAnimationFrame(frameLoop);
+
+  document.getElementById('pp').addEventListener('click', function () {
+    st.playing = !st.playing; this.textContent = st.playing ? 'Pause' : 'Play';
+    if (st.playing) capEl.className = 'caption';
+  });
+  document.getElementById('sound').addEventListener('click', function () {
+    st.sound = !st.sound; this.setAttribute('aria-pressed', String(st.sound));
+    this.textContent = st.sound ? 'Sound on' : 'Sound off';
+    if (st.sound) chime(function () {});
+  });
+})();
+</script>
+</body>
+</html>
