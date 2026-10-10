@@ -75,8 +75,6 @@ p { margin: 0; }
 .tag { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 4px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; }
 .card { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
 
-section.chapter { padding-block: clamp(96px, 12vw, 160px) 0; }
-section.chapter.first { padding-top: clamp(48px, 7vw, 96px); }
 .chapter-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: clamp(40px, 5vw, 64px); }
 .chapter-head .head-l { display: flex; flex-direction: column; gap: 24px; }
 @media (max-width: 900px) { .chapter-head { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
@@ -383,9 +381,43 @@ text.ld-s, .ld-echo text.ld-s { font-family: var(--font-sans); font-size: 12.5px
 .how2 li { font-size: 15px; line-height: 1.5; color: var(--ink-2); }
 .how2 li b { color: var(--ink); font-weight: 600; }
 @media (max-width: 860px) { .how2 { grid-template-columns: minmax(0, 1fr); } }
+/* Slides. On a laptop or projector the page is a deck: one slide per screen, stepped with the
+   presenter bar or the arrow keys, each slide zoomed to fit so nothing scrolls. On a phone it
+   falls back to one long page. */
+.slide { padding-block: 56px 0; }
+.slide-sub { margin-bottom: 20px; }
+.closer { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding-block: 40px; }
+.closer .brand { font-size: 22px; }
+.closer-h { font-size: clamp(44px, 6vw, 88px); line-height: 1; letter-spacing: -0.05em; font-weight: 500; }
+.closer .limits { max-width: 56ch; color: var(--ink-3); }
+.deck-bar { display: none; }
+html.is-deck, html.is-deck body { height: 100%; overflow: hidden; }
+html.is-deck .nav { display: none; }
+html.is-deck .slide { position: fixed; inset: 0 0 64px 0; padding: 32px 0 24px; display: flex; align-items: center; opacity: 0; visibility: hidden; transition: opacity 280ms ease, visibility 0s linear 280ms; overflow: hidden; }
+html.is-deck .slide.on { opacity: 1; visibility: visible; transition: opacity 280ms ease; }
+html.is-deck .slide-inner { width: 100%; }
+html.is-deck .chapter-head { margin-bottom: 24px; }
+html.is-deck .question { margin: 0; border-top: 0; padding-top: 0; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+html.is-deck .question .q-ask { font-size: clamp(40px, 5.2vw, 76px); line-height: 1.04; max-width: 20ch; }
+html.is-deck .claim { margin-top: 0; }
+html.is-deck .pillars { margin-top: 0; }
+html.is-deck .lanes-head { margin-top: 0; }
+html.is-deck .map-row { margin-top: 0; }
+html.is-deck footer { display: none; }
+html.is-deck .deck-bar { display: block; position: fixed; left: 0; right: 0; bottom: 0; height: 64px; z-index: 30; background: rgba(255, 255, 255, 0.92); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-top: 1px solid var(--line); }
+.deck-in { max-width: var(--wrap); margin: 0 auto; padding-inline: max(20px, 4vw); height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.deck-ch { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.deck-ch .brand { margin-right: 16px; font-size: 16px; }
+.deck-ch button { display: inline-flex; gap: 8px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-3); font: inherit; font-size: 14px; cursor: pointer; }
+.deck-ch button span { font-family: var(--font-mono); font-size: 11px; }
+.deck-ch button:hover { color: var(--ink); }
+.deck-ch button.on { color: var(--ink); background: var(--bg-3); }
+.deck-ctl { display: flex; align-items: center; gap: 8px; }
+.deck-n { font-size: 12px; color: var(--ink-3); margin-right: 8px; }
+.deck-next { background: var(--ink); color: #FFFFFF; border-color: var(--ink); }
+.deck-next:hover { background: #262A33; }
+.deck-progress { position: absolute; left: 0; top: -1px; height: 2px; background: var(--voice); transition: width 280ms ease; }
 /* Compact pass: every block fits in about one screen, with less scrolling between points. */
-section.chapter { padding-block: clamp(64px, 7vw, 96px) 0; }
-section.chapter.first { padding-top: clamp(40px, 5vw, 64px); }
 h1.chap, h2 { font-size: clamp(32px, 3.8vw, 52px); }
 .chapter-head { margin-bottom: clamp(24px, 3vw, 40px); gap: 40px; }
 .lede { font-size: clamp(17px, 1.4vw, 19px); }
@@ -424,6 +456,9 @@ h1.chap, h2 { font-size: clamp(32px, 3.8vw, 52px); }
 .stack div { padding: 14px 16px; }
 footer { margin-top: clamp(72px, 8vw, 112px); }
 
+html.is-deck .chapter-head { margin-bottom: 24px; }
+html.is-deck .question { margin: 0; border-top: 0; padding-top: 0; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -440,6 +475,15 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
 .cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .cta-btn:hover { background: var(--bg-3); }
 .cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+.closer-cta { display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 16px; font-weight: 500; text-decoration: none; }
+.closer-cta:hover { background: #262A33; }
+/* In deck mode the site nav stays on screen at the top, where it sits on the Live demo page;
+   the deck's bottom bar carries the chapters. */
+html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; }
+html.is-deck .chapters { display: none; }
+html.is-deck .slide { top: 60px; }
+html.is-deck .deck-ch .brand { display: none; }
+.demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
 .demo .film-video { width: min(100%, 380px); }
@@ -451,7 +495,7 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
 <body>
 <header class="nav">
   <div class="wrap nav-in">
-    <a class="brand" href="/#top"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
     <nav class="chapters" aria-label="Chapters">
       <a href="/#problem" data-ch="problem"><span>01</span><b>Problem</b></a>
       <a href="/#echo" data-ch="echo"><span>02</span><b>Echo</b></a>
@@ -463,7 +507,7 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
 </header>
 
 <main id="top">
-  <section class="chapter first" aria-labelledby="h-demo">
+  <section class="demo-page" aria-labelledby="h-demo">
     <div class="wrap">
       <div class="chapter-head">
         <div class="head-l">
