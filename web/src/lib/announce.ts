@@ -27,9 +27,10 @@ export const SPEECH_STYLE: Record<Announcement["kind"], string> = {
 };
 
 // How long to wait for Gemini before the browser voice speaks instead.
-// A warning that arrives late is worse than one in a plainer voice.
+// A warning that arrives late is worse than one in a plainer voice. The
+// Gemini audio still lands in the cache, so reminders use it.
 export const MAX_WAIT_MS: Record<Announcement["kind"], number> = {
-  warning: 1200,
+  warning: 400,
   description: 4000,
 };
 

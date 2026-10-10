@@ -3,27 +3,40 @@
 
 import { audioContext, unlockAudio } from "@/lib/audio";
 
-// Plays a short, harsh two-pitch alarm and resolves when it ends.
+// Two quick falling chimes: urgent enough to cut through, soft enough not to
+// grate. Sine waves with a fast attack and gentle decay, no hard edges.
+const NOTES = [
+  { freq: 1046.5, at: 0 }, // C6
+  { freq: 784, at: 0.16 }, // G5
+];
+const NOTE_SEC = 0.22;
+const VOLUME = 0.3;
+
+// Plays the alarm and resolves when it ends.
 export function playAlarm(): Promise<void> {
   unlockAudio();
   const audio = audioContext();
-  const beeps = 4;
-  const beepSec = 0.12;
   const t0 = audio.currentTime + 0.01;
 
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type = "square";
-  gain.gain.setValueAtTime(0, t0);
-  for (let i = 0; i < beeps; i++) {
-    const t = t0 + i * beepSec;
-    osc.frequency.setValueAtTime(i % 2 ? 880 : 1320, t);
-    gain.gain.setValueAtTime(0.4, t);
-    gain.gain.setValueAtTime(0, t + beepSec * 0.85);
-  }
-  osc.connect(gain).connect(audio.destination);
-  osc.start(t0);
-  osc.stop(t0 + beeps * beepSec);
+  const out = audio.createGain();
+  out.gain.value = VOLUME;
+  out.connect(audio.destination);
 
-  return new Promise((resolve) => (osc.onended = () => resolve()));
+  let last: OscillatorNode | null = null;
+  for (const { freq, at } of NOTES) {
+    const t = t0 + at;
+    const osc = audio.createOscillator();
+    const env = audio.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(1, t + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.001, t + NOTE_SEC);
+    osc.connect(env).connect(out);
+    osc.start(t);
+    osc.stop(t + NOTE_SEC);
+    last = osc;
+  }
+
+  return new Promise((resolve) => (last!.onended = () => resolve()));
 }
