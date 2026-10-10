@@ -78,11 +78,35 @@ export async function speakAll(parts: Part[]): Promise<Voice> {
   return "gemini";
 }
 
+// Plays a line written and voiced on the server (base64 WAV), or says it
+// with the browser voice if there is no audio or Web Audio can't play it.
+export async function speakClip(text: string, wavBase64: string | null): Promise<Voice> {
+  const mine = ++generation;
+  if (wavBase64) {
+    try {
+      const bytes = Uint8Array.from(atob(wavBase64), (c) => c.charCodeAt(0));
+      const buffer = await audioContext().decodeAudioData(bytes.buffer);
+      if (mine !== generation) return "skipped";
+      stopPlayback();
+      await play(buffer);
+      return mine === generation ? "gemini" : "skipped";
+    } catch (e) {
+      console.warn("Couldn't play the voiced line, using browser voice", e);
+    }
+  }
+  if (mine !== generation) return "skipped";
+  stopPlayback();
+  return (await speakWithBrowser(text)) ? "browser" : "none";
+}
+
 // Fetches audio ahead of time so these phrases play without waiting, a few
-// at a time and in the order given. Each clip gets one retry; if it still
-// fails, Gemini is likely down (or has no key) and the rest are skipped.
+// at a time and in the order given. Each clip gets one retry after a short
+// pause (Gemini rate-limits bursts). Only after several clips in a row fail
+// is Gemini taken to be down (or keyless) and the rest skipped.
 // Resolves with how many phrases are not loaded.
-const PRELOAD_CONCURRENCY = 4;
+const PRELOAD_CONCURRENCY = 3;
+const PRELOAD_RETRY_MS = 1000;
+const PRELOAD_GIVE_UP_AFTER = 3;
 
 type PreloadOptions = {
   // Keep these clips for the whole session.
@@ -96,24 +120,26 @@ export async function preload(
 ): Promise<number> {
   const queue = [...phrases];
   let loaded = 0;
-  let gaveUp = false;
+  let failedInARow = 0;
   const load = async (text: string, style?: string) => {
     if (pin) pinned.add(cacheKey(text, style));
     try {
       await synthesize(text, style);
     } catch {
+      await sleep(PRELOAD_RETRY_MS);
       await synthesize(text, style);
     }
   };
   const worker = async () => {
-    while (!gaveUp && queue.length) {
+    while (failedInARow < PRELOAD_GIVE_UP_AFTER && queue.length) {
       const { text, style } = queue.shift()!;
       try {
         await load(text, style);
         loaded++;
+        failedInARow = 0;
         onProgress?.(loaded, phrases.length);
       } catch {
-        gaveUp = true;
+        failedInARow++;
       }
     }
   };

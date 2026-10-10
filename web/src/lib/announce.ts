@@ -31,7 +31,16 @@ export type Description = {
   text: string;
 };
 
-export type Announcement = Warning | Description;
+// A line written from the frame on the server (see lib/line.ts), already
+// voiced. `advice` says which question it answers, for the caption colour.
+export type Line = {
+  kind: "line";
+  text: string;
+  audio: string | null;
+  advice: Advice;
+};
+
+export type Announcement = Warning | Description | Line;
 
 // One spoken piece. Warnings are said as the action, then the thing, each
 // cached on its own so the short commands are always ready.
@@ -42,7 +51,7 @@ export type Segment = { text: string; style: string; maxWaitMs: number };
 // the Gemini audio still lands in the cache for next time.
 const VOICE = {
   alarm: { style: "sharp and urgent, like calling out to stop someone", maxWaitMs: 400 },
-  warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 400 },
+  warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 1200 },
   command: { style: "firm and clear, a short instruction", maxWaitMs: 400 },
   description: { style: "calm, clear and even", maxWaitMs: 4000 },
 };
@@ -90,6 +99,7 @@ export function commandSegments(): Segment[] {
 // The alarm keeps "Stop." first and the way out last.
 export function toSegments(a: Announcement): Segment[] {
   if (a.kind === "description") return [{ text: a.text, ...VOICE.description }];
+  if (a.kind === "line") return [{ text: a.text, ...VOICE.warning }];
 
   const object = a.object.charAt(0).toUpperCase() + a.object.slice(1);
   const direction = a.direction ?? "ahead";

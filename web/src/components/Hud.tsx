@@ -15,6 +15,7 @@ export function severityOf(a: Announcement | null): Severity {
     if (a.urgent) return "stop";
     return a.advice === "orient" ? "info" : "caution";
   }
+  if (a.kind === "line") return a.advice === "orient" ? "info" : "caution";
   return "info";
 }
 
