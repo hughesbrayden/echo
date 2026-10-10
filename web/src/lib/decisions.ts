@@ -72,6 +72,8 @@ export type Recent = {
   urgent?: boolean;
   // "object|direction" for warnings, so phrasing changes don't break matching.
   key?: string;
+  // The announcement told the wearer which way to go.
+  guided?: boolean;
 };
 
 // Answers from the frames just before this one, newest last.
@@ -80,6 +82,22 @@ export type Past = { hazard_close: number; urgency: number; distance: number; se
 // The frame from when Echo last spoke about something, and how often it has
 // mentioned that thing in a row.
 export type Reference = { imageDataUrl: string; text: string; secondsAgo: number; mentions: number };
+
+// The background narrator's latest summary (see narrator.ts), passed along
+// so the stateless decision model knows what has been happening.
+export type NarrationContext = {
+  summary: string;
+  secondsAgo: number;
+  // Set only when the last two narrations agree the ground goes up or down.
+  groundDirection: "up" | "down" | null;
+};
+
+// Older summaries are ignored: the scene has likely moved on.
+const NARRATION_MAX_AGE_S = 15;
+
+function freshNarration(n: NarrationContext | null): NarrationContext | null {
+  return n && n.secondsAgo <= NARRATION_MAX_AGE_S ? n : null;
+}
 
 export const THRESHOLDS = {
   alarmHazard: 0.8,
@@ -110,6 +128,22 @@ export const THRESHOLDS = {
   groundChange: 0.7,
   // The same height change isn't mentioned again for this long.
   groundRepeatS: 30,
+  // Camera tilted up past this (degrees): the ground is out of view, so
+  // height changes and "Keep walking." can't be judged.
+  lookingUpPitch: 10,
+  // Head turned further than this from the walking direction (degrees):
+  // "ahead" in the frame isn't the way they are walking, so no go-around
+  // commands or "Keep walking.".
+  lookingAwayDeg: 35,
+  // "Keep walking." needs this frame and the one before it this calm.
+  clearHazard: 0.2,
+  clearUrgency: 1,
+  clearGround: 0.3,
+  clearWorthSaying: 0.5,
+  // Said once the way is clear within this long after a go-around command...
+  clearAfterGuidanceS: 15,
+  // ...and otherwise after this long of quiet while walking.
+  keepWalkingS: 20,
   // Something still in view gets a spoken reminder after this long, doubling
   // each time up to the max, and only while the wearer is walking.
   reminderFirstS: 15,
@@ -204,12 +238,24 @@ const QUESTIONS = [
   },
 ];
 
-function contextText(recent: Recent[], motion: Motion | null): string {
+function contextText(recent: Recent[], motion: Motion | null, narration: NarrationContext | null): string {
   recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
   const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
+    const tilt = Math.abs(motion.pitch);
+    lines.push(
+      tilt < 5
+        ? "The camera points level."
+        : `The camera points ${tilt}° ${motion.pitch < 0 ? "down toward the ground" : "up above level"}.`,
+    );
+    if (Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg) {
+      const side = motion.headOffset > 0 ? "left" : "right";
+      lines.push(`The wearer is looking about ${Math.abs(motion.headOffset)}° to the ${side} of where they are walking.`);
+    }
   }
+  const fresh = freshNarration(narration);
+  if (fresh) lines.push(`What has been happening (${Math.round(fresh.secondsAgo)}s ago): ${fresh.summary}`);
   lines.push(
     recent.length === 0
       ? "Echo has said nothing recently."
@@ -238,6 +284,7 @@ export async function decide(
   motion: Motion | null,
   apiKey: string,
   reference: Reference | null = null,
+  narration: NarrationContext | null = null,
 ): Promise<Answers> {
   const images = reference
     ? [
@@ -261,7 +308,7 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: contextText(recent, motion) },
+            { type: "input_text", text: contextText(recent, motion, narration) },
             ...images,
           ],
         },
@@ -363,6 +410,7 @@ export function urgentWarnings(): Warning[] {
 
 // Identifies a warning by what and where, ignoring wording and urgency.
 export function announcementKey(a: Announcement): string | undefined {
+  if (a.kind === "clear") return "clear";
   if (a.kind !== "warning") return undefined;
   // Ground changes are keyed by distance too, so "close" can follow "near".
   if (a.ground) return `ground|${a.object}|${a.distance}`;
@@ -390,8 +438,14 @@ const MOVES = new Set<Answers["subject"]>(["person", "bicycle", "vehicle"]);
 // Which way to go. Only for something in the path that is near or close, or
 // something beside the wearer that is close enough to brush. Never claims the
 // way is clear: it points to the side with more room.
-function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance | undefined {
-  if (!GO_AROUND.has(a.subject)) return undefined;
+function toGuidance(
+  a: Answers,
+  distance: Distance,
+  urgent: boolean,
+  lookingAway: boolean,
+): Guidance | undefined {
+  // Left and right in the frame aren't left and right of the walking path.
+  if (lookingAway || !GO_AROUND.has(a.subject)) return undefined;
   const close = urgent || distance === "close";
   if (a.direction !== "ahead") {
     if (!close) return undefined;
@@ -410,11 +464,24 @@ function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance |
 // the time the wearer reaches them the warning would be forgotten. Steps,
 // curbs and stairs get "Slow down." since the cane needs to find the edge;
 // ramps just get named.
-function toGroundWarning(a: Answers): Warning | null {
+// Up or down only comes from the narrator, which judges it across frames and
+// head pitch; one frame got it wrong in tests.
+const GROUND_OBJECT: Record<Answers["ground_kind"], Record<"up" | "down", string>> = {
+  ramp: { up: "ramp going up", down: "ramp going down" },
+  step: { up: "a step up", down: "a step down" },
+  curb: { up: "a step up at the curb", down: "a step down at the curb" },
+  stairs: { up: "stairs going up", down: "stairs going down" },
+};
+
+function toGroundWarning(a: Answers, direction: "up" | "down" | null): Warning | null {
   if (a.ground_change < THRESHOLDS.groundChange) return null;
   const distance = toDistance(a.ground_distance);
   if (distance === "far") return null;
-  const object = a.ground_kind === "step" ? "a step" : a.ground_kind;
+  const object = direction
+    ? GROUND_OBJECT[a.ground_kind][direction]
+    : a.ground_kind === "step"
+      ? "a step"
+      : a.ground_kind;
   const slow = a.ground_kind !== "ramp";
   return { kind: "warning", ground: true, object, direction: "ahead", distance, guidance: slow ? "slow" : undefined };
 }
@@ -434,16 +501,19 @@ export function toAnnouncement(
   history: Past[],
   motion: Motion | null,
   reference: Pick<Reference, "secondsAgo" | "mentions"> | null,
+  narration: NarrationContext | null = null,
 ): Announcement | null {
+  const lookingUp = !!motion && motion.pitch > THRESHOLDS.lookingUpPitch;
+  const lookingAway = !!motion && Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg;
   const distance = toDistance(a.distance);
   const warning: Warning = {
     kind: "warning",
     object: SUBJECT_OBJECTS[a.subject],
     direction: a.direction,
     distance,
-    guidance: toGuidance(a, distance, false),
+    guidance: toGuidance(a, distance, false, lookingAway),
   };
-  const alarm: Warning = { ...warning, urgent: true, guidance: toGuidance(a, distance, true) };
+  const alarm: Warning = { ...warning, urgent: true, guidance: toGuidance(a, distance, true, lookingAway) };
   const reminder: Warning = { ...warning, reminder: true };
   const lastSpokeS = Math.min(Infinity, ...recent.map((r) => r.secondsAgo));
   const lastAlarmS = Math.min(Infinity, ...recent.filter((r) => r.urgent).map((r) => r.secondsAgo));
@@ -475,7 +545,7 @@ export function toAnnouncement(
 
   // Height changes come next: they matter while walking whatever else is in
   // view, and stay quiet for a while once said.
-  const ground = toGroundWarning(a);
+  const ground = lookingUp ? null : toGroundWarning(a, freshNarration(narration)?.groundDirection ?? null);
   if (ground) {
     const key = announcementKey(ground);
     const said = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.groundRepeatS);
@@ -485,12 +555,38 @@ export function toAnnouncement(
   const groundSubject = a.subject === "stairs" || a.subject === "curb";
   if (groundSubject && a.ground_change >= THRESHOLDS.groundChange) return null;
 
-  if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
-  // Head turns sweep things through view; let them settle before speaking.
-  if (motion?.turning) return null;
-  if (same) return reminderDue() ? reminder : null;
+  const words = (): Announcement | null => {
+    if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
+    // Head turns sweep things through view; let them settle before speaking.
+    if (motion?.turning) return null;
+    if (same) return reminderDue() ? reminder : null;
 
-  const key = announcementKey(warning);
-  const samePhrase = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.samePhraseS);
-  return samePhrase ? null : warning;
+    const key = announcementKey(warning);
+    const samePhrase = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.samePhraseS);
+    return samePhrase ? null : warning;
+  };
+
+  // "Keep walking." when nothing is in the way: once just after going around
+  // something, and as a quiet check-in on long calm stretches, which also
+  // tells the wearer Echo is still working. It needs two calm frames in a
+  // row, the wearer walking and facing where they walk, and the ground in
+  // view. It never says the path is clear or safe.
+  const keepWalking = (): Announcement | null => {
+    if (!motion?.walking || motion.turning || lookingUp || lookingAway) return null;
+    const calm =
+      a.hazard_close < THRESHOLDS.clearHazard &&
+      a.urgency < THRESHOLDS.clearUrgency &&
+      a.ground_change < THRESHOLDS.clearGround &&
+      a.worth_saying < THRESHOLDS.clearWorthSaying;
+    const previous = window.at(-1);
+    if (!calm || !previous || previous.hazard_close >= THRESHOLDS.clearHazard) return null;
+    if (lastSpokeS < THRESHOLDS.wordsGapS) return null;
+
+    const lastClearS = Math.min(Infinity, ...recent.filter((r) => r.key === "clear").map((r) => r.secondsAgo));
+    const lastGuidedS = Math.min(Infinity, ...recent.filter((r) => r.guided).map((r) => r.secondsAgo));
+    const justWentAround = lastGuidedS < THRESHOLDS.clearAfterGuidanceS && lastClearS > lastGuidedS;
+    return justWentAround || lastSpokeS >= THRESHOLDS.keepWalkingS ? { kind: "clear" } : null;
+  };
+
+  return words() ?? keepWalking();
 }

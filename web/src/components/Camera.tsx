@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
+import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
-import { commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
+import { KEEP_WALKING, commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -37,6 +38,17 @@ const JPEG_QUALITY = 0.7;
 const REFERENCE_MAX_AGE_MS = 90_000;
 // How far back the spoken log reaches.
 const RECENT_MAX_AGE_MS = 120_000;
+// The background narrator runs this long after its previous call finishes,
+// on frames about this far apart.
+const NARRATE_INTERVAL_MS = 4000;
+const NARRATE_FRAME_SPACING_MS = 1500;
+const NARRATE_FRAMES = 3;
+// How much recent video and motion to keep for it.
+const HISTORY_KEEP_MS = 8000;
+// Its spoken updates wait this long after anything else was said, and this
+// long after the previous update.
+const UPDATE_AFTER_SPEECH_MS = 3000;
+const UPDATE_GAP_MS = 15_000;
 
 type Status = "idle" | "starting" | "running" | "error";
 
@@ -48,9 +60,13 @@ export default function Camera() {
   // Bumped on every start and stop so a loop from an earlier run ends.
   const loopRef = useRef(0);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
+  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string; guided: boolean }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
+  // Recent frames and motion for the narrator, and its last two results.
+  const framesRef = useRef<{ blob: Blob; at: number }[]>([]);
+  const motionLogRef = useRef<(Omit<MotionSample, "secondsAgo"> & { at: number })[]>([]);
+  const narrationsRef = useRef<{ narration: Narration; at: number }[]>([]);
   const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -61,6 +77,7 @@ export default function Camera() {
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
   const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
+  const [narration, setNarration] = useState<{ narration: Narration; latencyMs: number } | null>(null);
   // Alarm phrases and commands loading at Start; Echo waits for them.
   const [voiceProgress, setVoiceProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
@@ -79,7 +96,7 @@ export default function Camera() {
     // Every alarm phrase and command must be ready before Echo starts
     // watching, so a warning never waits on the network. Loads while the
     // camera starts.
-    const phrases = [...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
+    const phrases = [KEEP_WALKING, ...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
     setVoiceProgress({ loaded: 0, total: phrases.length });
     const voiceReady = preload(phrases, {
       pin: true,
@@ -124,6 +141,7 @@ export default function Camera() {
       }
 
       void frameLoop(run);
+      void narrateLoop(run);
       setStatus("running");
     } catch (e) {
       setVoiceProgress(null);
@@ -145,11 +163,76 @@ export default function Camera() {
     saidRef.current = [];
     historyRef.current = [];
     referenceRef.current = null;
+    framesRef.current = [];
+    motionLogRef.current = [];
+    narrationsRef.current = [];
+    setNarration(null);
     setStatus("idle");
   }
 
   // Sends the newest frame, waits for the reply, then sends the next one, so
   // there is never a stale frame queued and no idle wait after a slow reply.
+  // The slower background pass: every few seconds, a short run of frames
+  // plus what was said and how the head moved, summarised by a reasoning
+  // model. Its summary rides along with every frame; its rare spoken updates
+  // only play when nothing else has been said recently.
+  async function narrateLoop(loop: number) {
+    await sleep(NARRATE_INTERVAL_MS);
+    while (loop === loopRef.current) {
+      await narrateOnce();
+      await sleep(NARRATE_INTERVAL_MS);
+    }
+  }
+
+  async function narrateOnce() {
+    const now = Date.now();
+    const frames = pickSpaced(framesRef.current, now);
+    if (frames.length === 0) return;
+
+    const form = new FormData();
+    frames.forEach((f, i) => form.append("frames", f.blob, `frame${i}.jpg`));
+    form.append("frameAges", JSON.stringify(frames.map((f) => (now - f.at) / 1000)));
+    const previous = narrationsRef.current.at(-1)?.narration;
+    if (previous) form.append("previous", JSON.stringify(previous));
+    form.append(
+      "recent",
+      JSON.stringify(
+        saidRef.current
+          .filter((s) => now - s.at < 30_000)
+          .map((s) => ({ text: s.text, secondsAgo: (now - s.at) / 1000 })),
+      ),
+    );
+    form.append(
+      "motionLog",
+      JSON.stringify(motionLogRef.current.map(({ at, ...m }) => ({ ...m, secondsAgo: (now - at) / 1000 }))),
+    );
+
+    try {
+      const res = await fetch("/api/narrate", { method: "POST", body: form });
+      if (!res.ok) throw new Error(`narrate HTTP ${res.status}`);
+      const data: { narration: Narration; latencyMs: number } = await res.json();
+      narrationsRef.current = [...narrationsRef.current, { narration: data.narration, at: Date.now() }].slice(-2);
+      setNarration(data);
+      maybeSayUpdate(data.narration.say);
+    } catch (e) {
+      // The narrator is a nice-to-have; the frame loop carries on without it.
+      console.warn("Narrator failed", e);
+    }
+  }
+
+  function maybeSayUpdate(say: string | null) {
+    if (!say) return;
+    const now = Date.now();
+    const said = saidRef.current;
+    const lastSpoke = Math.max(-Infinity, ...said.map((s) => s.at));
+    const lastUpdate = Math.max(-Infinity, ...said.filter((s) => s.key === "update").map((s) => s.at));
+    const lastAlarm = Math.max(-Infinity, ...said.filter((s) => s.urgent).map((s) => s.at));
+    if (now - lastSpoke < UPDATE_AFTER_SPEECH_MS || now - lastUpdate < UPDATE_GAP_MS) return;
+    if (now - lastAlarm < UPDATE_GAP_MS || motionLogRef.current.at(-1)?.turning) return;
+    said.push({ text: say, at: now, urgent: false, key: "update", guided: false });
+    setAnnouncement({ kind: "description", text: say });
+  }
+
   async function frameLoop(loop: number) {
     const startedAt = performance.now();
     await sendFrame();
@@ -160,6 +243,7 @@ export default function Camera() {
 
   async function sendFrame() {
     const blob = await captureFrame();
+    if (blob) keepRecent(framesRef, { blob, at: Date.now() });
     if (!blob) return;
 
     const form = new FormData();
@@ -168,6 +252,8 @@ export default function Camera() {
     if (frameMotion) {
       form.append("motion", JSON.stringify(frameMotion));
       setMotion(frameMotion);
+      const { pitch, headOffset, walking, turning } = frameMotion;
+      keepRecent(motionLogRef, { pitch, headOffset, walking, turning, at: Date.now() });
     }
 
     const now = Date.now();
@@ -179,6 +265,7 @@ export default function Camera() {
           text: s.text,
           secondsAgo: (now - s.at) / 1000,
           urgent: s.urgent,
+          guided: s.guided,
           key: s.key,
         })),
       ),
@@ -194,6 +281,18 @@ export default function Camera() {
         })),
       ),
     );
+
+    const latest = narrationsRef.current.at(-1);
+    if (latest) {
+      form.append(
+        "narration",
+        JSON.stringify({
+          summary: latest.narration.summary,
+          secondsAgo: (now - latest.at) / 1000,
+          groundDirection: groundDirection(narrationsRef.current.map((n) => n.narration)),
+        }),
+      );
+    }
 
     const reference = referenceRef.current;
     if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {
@@ -227,6 +326,7 @@ export default function Camera() {
           at: Date.now(),
           urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
           key: announcementKey(data.announcement),
+          guided: data.announcement.kind === "warning" && !!data.announcement.guidance,
         });
         // Count repeat mentions of the same thing; a new thing starts over.
         const mentions = data.sameObject && reference ? reference.mentions + 1 : 1;
@@ -274,7 +374,7 @@ export default function Camera() {
         {running && motion && (
           <p className="font-mono text-sm">
             {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
-            {motion.yawRate}°/s · accel {motion.accelRms}
+            {motion.yawRate}°/s · accel {motion.accelRms} · pitch {motion.pitch}° · head {motion.headOffset}°
           </p>
         )}
         {running && answers && (
@@ -292,6 +392,14 @@ export default function Camera() {
           <p className="text-sm text-yellow-300">Motion sensor unavailable or not allowed.</p>
         )}
         {voiceNote && <p className="text-sm text-yellow-300">{voiceNote}</p>}
+        {running && narration && (
+          <p className="text-sm opacity-80">
+            {narration.narration.summary}{" "}
+            <span className="font-mono text-xs opacity-70">
+              ({narration.narration.path} · ground {narration.narration.ground} · {narration.latencyMs} ms)
+            </span>
+          </p>
+        )}
         <Announcer announcement={announcement} className="text-lg" />
         {error && <p className="text-sm text-red-400">{error}</p>}
 
@@ -327,4 +435,36 @@ export default function Camera() {
       </div>
     </main>
   );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Appends an item and drops ones older than HISTORY_KEEP_MS.
+function keepRecent<T extends { at: number }>(ref: { current: T[] }, item: T) {
+  const cutoff = item.at - HISTORY_KEEP_MS;
+  ref.current = [...ref.current.filter((x) => x.at >= cutoff), item];
+}
+
+// The newest frame plus ones about NARRATE_FRAME_SPACING_MS apart before it,
+// oldest first.
+function pickSpaced<T extends { at: number }>(frames: T[], now: number): T[] {
+  const picked: T[] = [];
+  for (let i = 0; i < NARRATE_FRAMES; i++) {
+    const target = now - i * NARRATE_FRAME_SPACING_MS;
+    const best = frames
+      .filter((f) => !picked.includes(f))
+      .reduce<T | null>((b, f) => (!b || Math.abs(f.at - target) < Math.abs(b.at - target) ? f : b), null);
+    if (best) picked.push(best);
+  }
+  return picked.sort((a, b) => a.at - b.at);
+}
+
+// "up" or "down" only when the last two narrations agree.
+function groundDirection(narrations: Narration[]): "up" | "down" | null {
+  if (narrations.length < 2) return null;
+  const [a, b] = narrations.slice(-2).map((n) => n.ground);
+  if (a !== b) return null;
+  return a === "going_up" ? "up" : a === "going_down" ? "down" : null;
 }

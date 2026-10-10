@@ -12,6 +12,7 @@ import {
   type Answers,
   type Past,
   type Recent,
+  type NarrationContext,
   type Reference,
 } from "@/lib/decisions";
 
@@ -48,11 +49,14 @@ export async function POST(request: Request) {
   let history: Past[];
   // When Echo last spoke about something, and how many times in a row.
   let referenceInfo: Omit<Reference, "imageDataUrl"> | null;
+  // The background narrator's latest summary.
+  let narration: NarrationContext | null;
   try {
     motion = parseJson<Motion | null>(form, "motion", null);
     recent = parseJson<Recent[]>(form, "recent", []);
     history = parseJson<Past[]>(form, "history", []);
     referenceInfo = parseJson<Omit<Reference, "imageDataUrl"> | null>(form, "referenceInfo", null);
+    narration = parseJson<NarrationContext | null>(form, "narration", null);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
   }
@@ -70,7 +74,7 @@ export async function POST(request: Request) {
     if (!apiKey || process.env.ECHO_STUB === "1") {
       answers = stubAnswers(reference !== null);
     } else {
-      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference);
+      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, narration);
     }
   } catch (e) {
     // The phone skips this frame rather than speaking late.
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
   }
 
   const body: FrameResponse = {
-    announcement: toAnnouncement(answers, recent, history, motion, referenceInfo),
+    announcement: toAnnouncement(answers, recent, history, motion, referenceInfo, narration),
     sameObject: isSameObject(answers),
     bytes: frame.size,
     answers,
