@@ -6,9 +6,9 @@ import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
 import { AroundYou, Details, EchoMark, FocusHalo, StopGlow, TopBar } from "@/components/Hud";
 import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
-import { announcementKey, urgentWarnings } from "@/lib/decisions";
+import { announcementKey, commonWarnings, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
-import { preload, stopSpeaking } from "@/lib/speech";
+import { prefetch, preload, stopSpeaking } from "@/lib/speech";
 import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motion";
 import { DEFAULT_EYE_HEIGHT_M, cameraSetup, type CameraSetup } from "@/lib/geometry";
 
@@ -63,6 +63,8 @@ export default function Camera() {
   const timerRef = useRef<number | null>(null);
   // Bumped on every start and stop so a loop from an earlier run ends.
   const loopRef = useRef(0);
+  // Cancels the background warm-up of everyday warnings on Stop.
+  const prefetchRef = useRef<AbortController | null>(null);
   const motionRef = useRef<MotionTracker | null>(null);
   const saidRef = useRef<
     { text: string; at: number; urgent: boolean; advice?: Advice; key?: string; guided: boolean }[]
@@ -167,6 +169,14 @@ export default function Camera() {
 
       setAnnouncement({ kind: "description", text: "Echo on" });
 
+      // Everyday warnings warm up in the background, so their first mention
+      // comes from a cache instead of waiting on Gemini.
+      if (missing === 0) {
+        prefetchRef.current = new AbortController();
+        const everyday = commonWarnings().map((w) => toSegments(w).at(-1)!);
+        void prefetch(everyday, prefetchRef.current.signal);
+      }
+
       if (motionGranted) {
         motionRef.current = new MotionTracker();
         motionRef.current.start();
@@ -185,6 +195,8 @@ export default function Camera() {
 
   function stop() {
     loopRef.current++;
+    prefetchRef.current?.abort();
+    prefetchRef.current = null;
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     motionRef.current?.stop();

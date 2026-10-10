@@ -38,12 +38,14 @@ export type Announcement = Warning | Description;
 export type Segment = { text: string; style: string; maxWaitMs: number };
 
 // Style hints for the TTS model, and how long to wait for Gemini before the
-// browser voice speaks instead. A late warning is worse than a plainer voice;
-// the Gemini audio still lands in the cache for next time.
+// browser voice speaks instead. Alarms can't wait: they are all loaded at
+// Start, and if one somehow isn't, the browser voice says it at once.
+// Warnings and commands wait long enough for an uncached clip (about 2 s);
+// most come from the caches warmed at Start and play right away.
 const VOICE = {
   alarm: { style: "sharp and urgent, like calling out to stop someone", maxWaitMs: 400 },
-  warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 400 },
-  command: { style: "firm and clear, a short instruction", maxWaitMs: 400 },
+  warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 3000 },
+  command: { style: "firm and clear, a short instruction", maxWaitMs: 3000 },
   description: { style: "calm, clear and even", maxWaitMs: 4000 },
 };
 

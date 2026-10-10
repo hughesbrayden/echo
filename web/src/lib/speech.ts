@@ -12,6 +12,9 @@ const pinned = new Set<string>();
 
 // A clip request that takes longer than this has failed.
 const FETCH_TIMEOUT_MS = 8000;
+// Part of every clip URL. Bump it after changing the voice so the phone and
+// the CDN fetch new clips instead of the cached ones.
+const CLIP_VERSION = "1";
 
 // Past this wait the words would be late, so the browser voice says them.
 const DEFAULT_MAX_WAIT_MS = 1200;
@@ -140,15 +143,42 @@ function synthesize(text: string, style?: string): Promise<AudioBuffer> {
   return pending;
 }
 
-async function fetchAudio(text: string, style?: string): Promise<AudioBuffer> {
-  const res = await fetch("/api/speak", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, style }),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
+// GET, so the CDN and the phone's HTTP cache can answer instead of Gemini.
+function clipUrl(text: string, style?: string): string {
+  const params = new URLSearchParams({ text, v: CLIP_VERSION });
+  if (style) params.set("style", style);
+  return `/api/speak?${params}`;
+}
+
+async function fetchClip(text: string, style?: string, cancel?: AbortSignal): Promise<ArrayBuffer> {
+  const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  const signal = cancel ? AbortSignal.any([timeout, cancel]) : timeout;
+  const res = await fetch(clipUrl(text, style), { signal });
   if (!res.ok) throw new Error(`/api/speak ${res.status}`);
-  return audioContext().decodeAudioData(await res.arrayBuffer());
+  return res.arrayBuffer();
+}
+
+async function fetchAudio(text: string, style?: string): Promise<AudioBuffer> {
+  return audioContext().decodeAudioData(await fetchClip(text, style));
+}
+
+// Warms the caches for phrases that might be said, without decoding them, so
+// a long list doesn't fill the phone's memory. When one is said, its clip
+// comes from the phone's HTTP cache (or the CDN) instead of Gemini. Runs a
+// few at a time in the background until done or `signal` aborts.
+export async function prefetch(phrases: { text: string; style?: string }[], signal: AbortSignal): Promise<void> {
+  const queue = phrases.filter((p) => !cache.has(cacheKey(p.text, p.style)));
+  const worker = async () => {
+    while (queue.length && !signal.aborted) {
+      const { text, style } = queue.shift()!;
+      try {
+        await fetchClip(text, style, signal);
+      } catch {
+        // Just not warmed; it can still be fetched when said.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, worker));
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
