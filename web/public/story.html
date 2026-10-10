@@ -330,13 +330,11 @@ footer { margin-top: clamp(112px, 13vw, 180px); border-top: 1px solid var(--line
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
 
-/* Site additions: the recorded walk, the Live demo button and the closing call to action. */
+/* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
-.site a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
 .site a:hover { color: var(--ink); }
-.site a[aria-current="page"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
-.site a[href="/demo"] { background: var(--ink); color: #FFFFFF; }
-.site .live, .cta-btn .live { width: 7px; height: 7px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.22); }
+.site a[aria-current="page"] { background: var(--ink); color: #FFFFFF; }
 .film-video { position: relative; justify-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; border-radius: 28px; overflow: hidden; background: var(--ink); }
 .film-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cta { margin-top: clamp(112px, 13vw, 180px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--ink); color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
@@ -345,6 +343,12 @@ footer { margin-top: clamp(112px, 13vw, 180px); border-top: 1px solid var(--line
 .cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .cta-btn:hover { background: var(--bg-3); }
 .cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+.demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+@media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
+.demo .film-video { width: min(100%, 380px); }
+.heard { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.heard li { padding: 14px 18px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); font-size: 17px; letter-spacing: -0.01em; }
+.heard li span { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 2px; }
 </style>
 </head>
 <body>
@@ -357,7 +361,7 @@ footer { margin-top: clamp(112px, 13vw, 180px); border-top: 1px solid var(--line
       <a href="#different" data-ch="different"><span>03</span><b>Different</b></a>
       <a href="#built" data-ch="built"><span>04</span><b>Built</b></a>
     </nav>
-    <nav class="site" aria-label="Site"><a href="/" aria-current="page">Story</a><a href="/demo"><span class="live" aria-hidden="true"></span>Live demo</a></nav>
+    <nav class="site" aria-label="Site"><a href="/" aria-current="page">Story</a><a href="/demo">Live demo</a></nav>
   </div>
 </header>
 
@@ -720,10 +724,10 @@ footer { margin-top: clamp(112px, 13vw, 180px); border-top: 1px solid var(--line
   <section class="wrap" aria-labelledby="h-try">
     <div class="cta">
       <div>
-        <h2 id="h-try">Try Echo on your phone.</h2>
-        <p>The live demo runs the real app in your browser. Allow the camera, hold your phone at chest height, and walk.</p>
+        <h2 id="h-try">See Echo on a real walk.</h2>
+        <p>Watch the live demo: Echo running on a phone, with everything it heard and said on screen.</p>
       </div>
-      <a class="cta-btn" href="/demo"><span class="live" aria-hidden="true"></span>Open the live demo</a>
+      <a class="cta-btn" href="/demo">Watch the live demo</a>
     </div>
   </section>
 

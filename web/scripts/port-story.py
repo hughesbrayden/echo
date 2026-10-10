@@ -1,10 +1,11 @@
-"""Port the Echo Story artifact into web/public/story.html.
+"""Port the Echo Story artifact into web/public/story.html and demo.html.
 
 Usage: python3 scripts/port-story.py <artifact.html>
 
 The story is authored as a standalone page, so it is served as-is at "/" (see
-next.config.ts) with a few site edits: a real <head>, a Live demo button, the
-recorded walk video in place of its placeholder, and a closing call to action.
+next.config.ts) with a few site edits: a real <head>, a Story / Live demo nav,
+the recorded walk video in place of its placeholder, and a closing call to
+action. The Live demo page at "/demo" shares its nav, styles and footer.
 Rerun this whenever the story is revised.
 """
 import pathlib
@@ -34,16 +35,14 @@ def swap(old, new, text):
     return text.replace(old, new, 1)
 
 
-# Phones are where the demo runs, so the site nav stays at every width and the chapter links give way.
+# The site nav stays at every width, in the same spot on every page; the chapter links give way on phones.
 css = swap(".nav-cta { display: none; }", ".chapters { display: none; }", css)
 css += """
-/* Site additions: the recorded walk, the Live demo button and the closing call to action. */
+/* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
-.site a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
 .site a:hover { color: var(--ink); }
-.site a[aria-current="page"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
-.site a[href="/demo"] { background: var(--ink); color: #FFFFFF; }
-.site .live, .cta-btn .live { width: 7px; height: 7px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.22); }
+.site a[aria-current="page"] { background: var(--ink); color: #FFFFFF; }
 .film-video { position: relative; justify-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; border-radius: 28px; overflow: hidden; background: var(--ink); }
 .film-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cta { margin-top: clamp(112px, 13vw, 180px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--ink); color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
@@ -52,48 +51,93 @@ css += """
 .cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: #FFFFFF; color: var(--ink); font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .cta-btn:hover { background: var(--bg-3); }
 .cta + footer { margin-top: clamp(56px, 7vw, 96px); }
+.demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+@media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
+.demo .film-video { width: min(100%, 380px); }
+.heard { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.heard li { padding: 14px 18px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); font-size: 17px; letter-spacing: -0.01em; }
+.heard li span { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 2px; }
 """
 
-body = swap(
-    '<a class="nav-cta" href="#film">Watch the walk</a>',
-    '<nav class="site" aria-label="Site"><a href="/" aria-current="page">Story</a>'
-    '<a href="/demo"><span class="live" aria-hidden="true"></span>Live demo</a></nav>',
-    body,
-)
-body = swap(' <span class="tag">Video coming</span>', "", body)
-film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
-body = body.replace(
-    film,
+
+def site_nav(current):
+    story = ' aria-current="page"' if current == "story" else ""
+    demo = ' aria-current="page"' if current == "demo" else ""
+    return f'<nav class="site" aria-label="Site"><a href="/"{story}>Story</a><a href="/demo"{demo}>Live demo</a></nav>'
+
+
+VIDEO = (
     '<div class="card film-video">\n'
     '          <video controls playsinline preload="metadata" poster="/media/echo-walk-01.jpg" aria-label="Screen recording of Echo running on a phone during a real walk">\n'
     '            <source src="/media/echo-walk-01.mp4" type="video/mp4">\n'
     "          </video>\n"
-    "        </div>",
-    1,
+    "        </div>"
 )
+
+body = swap('<a class="nav-cta" href="#film">Watch the walk</a>', site_nav("story"), body)
+body = swap(' <span class="tag">Video coming</span>', "", body)
+film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
+body = body.replace(film, VIDEO, 1)
 body = swap(
     "  <footer>",
     '  <section class="wrap" aria-labelledby="h-try">\n'
     '    <div class="cta">\n'
     "      <div>\n"
-    '        <h2 id="h-try">Try Echo on your phone.</h2>\n'
-    "        <p>The live demo runs the real app in your browser. Allow the camera, hold your phone at chest height, and walk.</p>\n"
+    '        <h2 id="h-try">See Echo on a real walk.</h2>\n'
+    "        <p>Watch the live demo: Echo running on a phone, with everything it heard and said on screen.</p>\n"
     "      </div>\n"
-    '      <a class="cta-btn" href="/demo"><span class="live" aria-hidden="true"></span>Open the live demo</a>\n'
+    '      <a class="cta-btn" href="/demo">Watch the live demo</a>\n'
     "    </div>\n"
     "  </section>\n\n"
     "  <footer>",
     body,
 )
 
-page = f"""<!doctype html>
+# The demo page shares the story's nav and footer. The camera app is switched off for
+# now, so the live demo is the recording of a real walk.
+header = one(r'<header class="nav">.*?</header>', body).group(0)
+header = header.replace(site_nav("story"), site_nav("demo")).replace('href="#', 'href="/#')
+footer = one(r"<footer>.*?</footer>", body).group(0).replace('href="#top"', 'href="/"')
+demo_body = f"""{header}
+
+<main id="top">
+  <section class="chapter first" aria-labelledby="h-demo">
+    <div class="wrap">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>Live</b> demo</span>
+          <h1 class="chap" id="h-demo">Echo on a real walk.</h1>
+        </div>
+        <p class="lede">Recorded live on a phone standing in for the glasses, with what Echo heard and said shown on screen.</p>
+      </div>
+      <div class="demo">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <span class="eyebrow">Some of what Echo said</span>
+          <ul class="heard">
+            <li><span>On your way</span>"Keep walking."</li>
+            <li><span>Heads up</span>"A step, about 4 steps ahead. Slow down."</li>
+            <li><span>Heads up</span>"Person, about 5 steps ahead. Bear right."</li>
+            <li><span>Heads up</span>"Door, about 5 steps ahead."</li>
+          </ul>
+        </div>
+        {VIDEO}
+      </div>
+    </div>
+  </section>
+
+  {footer}
+</main>"""
+
+
+def page(title, body_html):
+    return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Echo</title>
+<title>{title}</title>
 <meta name="description" content="{description}">
-<meta property="og:title" content="Echo">
+<meta property="og:title" content="{title}">
 <meta property="og:description" content="{description}">
 <meta property="og:image" content="/media/echo-walk-01.jpg">
 <meta name="theme-color" content="#FFFFFF">
@@ -103,9 +147,12 @@ page = f"""<!doctype html>
 {css}</style>
 </head>
 <body>
-{body}
+{body_html}
 </body>
 </html>
 """
-out.write_text(page, encoding="utf-8")
-print(f"wrote {out} ({len(page):,} bytes)")
+
+
+for name, html in (("story.html", page("Echo", body)), ("demo.html", page("Echo · Live demo", demo_body))):
+    (out.parent / name).write_text(html, encoding="utf-8")
+    print(f"wrote {out.parent / name} ({len(html):,} bytes)")

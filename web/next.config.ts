@@ -6,10 +6,18 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
-  // The landing page is the Echo story, a standalone page in public/ (see
-  // scripts/port-story.py). The camera app lives at /demo.
+  // The site is the Echo story and a Live demo page that plays a recorded walk,
+  // both standalone pages in public/ (see scripts/port-story.py). The camera app
+  // is switched off for now.
   async rewrites() {
-    return { beforeFiles: [{ source: "/", destination: "/story.html" }], afterFiles: [], fallback: [] };
+    return {
+      beforeFiles: [
+        { source: "/", destination: "/story.html" },
+        { source: "/demo", destination: "/demo.html" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   turbopack: {
     rules: {
