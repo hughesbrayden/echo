@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import Announcer from "@/components/Announcer";
 import { SPEECH_STYLE, toPhrase, type Announcement } from "@/lib/announce";
-import { urgentWarnings } from "@/lib/decisions";
+import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
 import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motion";
@@ -26,6 +26,10 @@ const TESTS: { label: string; announcement: Announcement }[] = [
 const FRAME_INTERVAL_MS = 500;
 const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
+// Echo forgets what it last spoke about after this long.
+const REFERENCE_MAX_AGE_MS = 90_000;
+// How far back the spoken log reaches.
+const RECENT_MAX_AGE_MS = 120_000;
 
 type Status = "idle" | "starting" | "running" | "error";
 
@@ -36,8 +40,10 @@ export default function Camera() {
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number; urgent: boolean }[]>([]);
-  const historyRef = useRef<{ hazard_close: number; urgency: number; at: number }[]>([]);
+  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
+  // The frame from when Echo last spoke about something, to compare against.
+  const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
+  const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +114,9 @@ export default function Camera() {
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     stopSpeaking();
+    saidRef.current = [];
+    historyRef.current = [];
+    referenceRef.current = null;
     setStatus("idle");
   }
 
@@ -129,11 +138,16 @@ export default function Camera() {
     }
 
     const now = Date.now();
-    saidRef.current = saidRef.current.filter((s) => now - s.at < 15000);
+    saidRef.current = saidRef.current.filter((s) => now - s.at < RECENT_MAX_AGE_MS);
     form.append(
       "recent",
       JSON.stringify(
-        saidRef.current.map((s) => ({ text: s.text, secondsAgo: (now - s.at) / 1000, urgent: s.urgent })),
+        saidRef.current.map((s) => ({
+          text: s.text,
+          secondsAgo: (now - s.at) / 1000,
+          urgent: s.urgent,
+          key: s.key,
+        })),
       ),
     );
     form.append(
@@ -142,10 +156,24 @@ export default function Camera() {
         historyRef.current.map((h) => ({
           hazard_close: h.hazard_close,
           urgency: h.urgency,
+          distance: h.distance,
           secondsAgo: (now - h.at) / 1000,
         })),
       ),
     );
+
+    const reference = referenceRef.current;
+    if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {
+      form.append("reference", reference.blob, "reference.jpg");
+      form.append(
+        "referenceInfo",
+        JSON.stringify({
+          text: reference.text,
+          secondsAgo: (now - reference.at) / 1000,
+          mentions: reference.mentions,
+        }),
+      );
+    }
 
     inFlightRef.current = true;
     const startedAt = performance.now();
@@ -157,15 +185,20 @@ export default function Camera() {
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
       if (data.answers) {
-        const { hazard_close, urgency } = data.answers;
-        historyRef.current = [...historyRef.current, { hazard_close, urgency, at: now }].slice(-2);
+        const { hazard_close, urgency, distance } = data.answers;
+        historyRef.current = [...historyRef.current, { hazard_close, urgency, distance, at: now }].slice(-2);
       }
       if (data.announcement) {
+        const text = toPhrase(data.announcement);
         saidRef.current.push({
-          text: toPhrase(data.announcement),
+          text,
           at: Date.now(),
           urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
+          key: announcementKey(data.announcement),
         });
+        // Count repeat mentions of the same thing; a new thing starts over.
+        const mentions = data.sameObject && reference ? reference.mentions + 1 : 1;
+        referenceRef.current = { blob, text, at: Date.now(), mentions };
         setAnnouncement(data.announcement);
       }
     } catch (e) {
@@ -217,7 +250,10 @@ export default function Camera() {
         {running && answers && (
           <p className="font-mono text-sm">
             hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
-            {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · api {answers.latencyMs} ms
+            {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · dist{" "}
+            {answers.distance.toFixed(1)}
+            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`} · api{" "}
+            {answers.latencyMs} ms
             {answers.stub && " · stub"}
           </p>
         )}

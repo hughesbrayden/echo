@@ -31,8 +31,10 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 | `hazard_close` | predicate | Is something in the path within about 2 m that could be walked into or fallen from? |
 | `worth_saying` | predicate | Is something new, compared to what was last said, that the wearer would want to know now? |
 | `urgency` | score | none, notice, caution, stop |
-| `subject` | choice | obstacle, person, stairs, door, sign, vehicle, other |
+| `subject` | choice | person, chair, table, bench, pole, trash can, stairs, curb, door, wall, bicycle, vehicle, sign, other obstacle, other |
 | `direction` | choice | left, ahead, right |
+| `distance` | score | far (over 3 m), near (1 to 3 m), close (under 1 m) |
+| `same_as_last` | predicate | Is the main thing the same one Echo last spoke about? Asked only when the frame from that moment is sent as a second image. |
 
 **Routing:** high `hazard_close` plus `urgency` near stop sounds the alarm. A high `worth_saying` triggers words. Everything else is silence.
 
@@ -86,8 +88,9 @@ The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" be
 The phone posts each frame to `POST /api/frame` (multipart) and the server replies with what to do. Defined in [`web/src/app/api/frame/route.ts`](../web/src/app/api/frame/route.ts).
 
 ```
-in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo }])
-out: { announcement: { kind: "warning", object, direction, urgent? } | null, answers: { hazard_close, worth_saying, urgency, subject, direction, latencyMs, stub } }
+in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo, urgent, key }]),
+     history (JSON: last 2 frames' hazard_close, urgency, distance), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
+out: { announcement: { kind: "warning", object, direction, urgent? } | null, sameObject, answers: { hazard_close, worth_saying, urgency, subject, direction, distance, same_as_last, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.

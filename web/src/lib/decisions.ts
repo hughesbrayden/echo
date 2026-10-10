@@ -5,12 +5,32 @@
 // The questions and thresholds are v0 guesses: tuning them is the main work.
 // decide() runs on the server; the phone imports only the phrase helpers.
 
-import { toPhrase, type Announcement, type Warning } from "@/lib/announce";
+import type { Announcement, Distance, Warning } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
 
 const MODEL = "gpt-6-luna";
 
-const SUBJECTS = ["obstacle", "person", "stairs", "door", "sign", "vehicle", "other"] as const;
+// Specific names so Echo can say "Chair ahead" rather than "Obstacle ahead".
+// A wrong label only changes the words: whether Echo speaks comes from the
+// predicates. Choice answers can be overconfident and shift with option
+// order, so score these on recorded walks.
+const SUBJECTS = [
+  "person",
+  "chair",
+  "table",
+  "bench",
+  "pole",
+  "trash_can",
+  "stairs",
+  "curb",
+  "door",
+  "wall",
+  "bicycle",
+  "vehicle",
+  "sign",
+  "other_obstacle",
+  "other",
+] as const;
 const DIRECTIONS = ["left", "ahead", "right"] as const;
 
 export type Answers = {
@@ -22,16 +42,31 @@ export type Answers = {
   urgency: number;
   subject: (typeof SUBJECTS)[number];
   direction: (typeof DIRECTIONS)[number];
+  // 0..2, probability-weighted: far (over 3 m), near (1-3 m), close (under 1 m).
+  distance: number;
+  // 0..1: the main thing now is the one Echo last spoke about. Null when
+  // there was no earlier frame to compare against.
+  same_as_last: number | null;
   // Time spent waiting on the Decisions API.
   latencyMs: number;
   // True when the answers are fake because no API key is set.
   stub: boolean;
 };
 
-export type Recent = { text: string; secondsAgo: number; urgent?: boolean };
+export type Recent = {
+  text: string;
+  secondsAgo: number;
+  urgent?: boolean;
+  // "object|direction" for warnings, so phrasing changes don't break matching.
+  key?: string;
+};
 
 // Answers from the frames just before this one, newest last.
-export type Past = { hazard_close: number; urgency: number; secondsAgo: number };
+export type Past = { hazard_close: number; urgency: number; distance: number; secondsAgo: number };
+
+// The frame from when Echo last spoke about something, and how often it has
+// mentioned that thing in a row.
+export type Reference = { imageDataUrl: string; text: string; secondsAgo: number; mentions: number };
 
 export const THRESHOLDS = {
   alarmHazard: 0.8,
@@ -42,11 +77,26 @@ export const THRESHOLDS = {
   alarmConfirmFrames: 2,
   // Frames older than this don't count toward confirming.
   alarmConfirmWindowS: 2.5,
-  // The same alarm phrase stays quiet this long after it was said.
-  alarmRepeatS: 10,
   // Any two alarms are at least this far apart.
   alarmGapS: 4,
-  wordsRepeatS: 10,
+  // Words wait this long after Echo last spoke, so it never talks over itself.
+  wordsGapS: 3,
+  // Above this, the main thing is the one Echo already spoke about.
+  sameObject: 0.7,
+  // A hazard or distance score that rises this much over the last few frames
+  // means it is getting closer, so the alarm sounds again even for something
+  // already mentioned.
+  approachRise: 0.15,
+  approachDistanceRise: 0.5,
+  // Distance score cut-offs for the spoken words.
+  distanceClose: 1.5,
+  distanceNear: 0.5,
+  // Something still in view gets a spoken reminder after this long, doubling
+  // each time up to the max, and only while the wearer is walking.
+  reminderFirstS: 15,
+  reminderMaxS: 60,
+  // A different thing with the exact same phrase still waits this long.
+  samePhraseS: 10,
 };
 
 function overAlarmLine(a: { hazard_close: number; urgency: number }): boolean {
@@ -89,9 +139,20 @@ const QUESTIONS = [
     instructions: "Where that thing is relative to where the camera faces.",
     choices: DIRECTIONS.map((value) => ({ value })),
   },
+  {
+    type: "score",
+    name: "distance",
+    instructions: "How far that thing is from the wearer.",
+    levels: [
+      { label: "far", description: "More than about 3 meters away" },
+      { label: "near", description: "About 1 to 3 meters away" },
+      { label: "close", description: "Within about 1 meter, a step or two" },
+    ],
+  },
 ];
 
 function contextText(recent: Recent[], motion: Motion | null): string {
+  recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
   const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
@@ -110,12 +171,33 @@ type RawAnswer =
   | { type: "score"; name: string; score: number }
   | { type: "refusal"; name: string };
 
+// Only asked when there is an earlier frame to compare against.
+const SAME_AS_LAST = {
+  type: "predicate",
+  name: "same_as_last",
+  instructions:
+    "The main thing in image 2 is the same object Echo already spoke about in image 1, even if the camera has moved.",
+};
+
 export async function decide(
   imageDataUrl: string,
   recent: Recent[],
   motion: Motion | null,
   apiKey: string,
+  reference: Reference | null = null,
 ): Promise<Answers> {
+  const images = reference
+    ? [
+        {
+          type: "input_text",
+          text: `Image 1: the frame when Echo said '${reference.text}', ${Math.round(reference.secondsAgo)}s ago.`,
+        },
+        { type: "input_image", image_url: reference.imageDataUrl, detail: "low" },
+        { type: "input_text", text: "Image 2: the newest frame. All other questions are about image 2." },
+        { type: "input_image", image_url: imageDataUrl, detail: "low" },
+      ]
+    : [{ type: "input_image", image_url: imageDataUrl, detail: "low" }];
+
   const startedAt = Date.now();
   const res = await fetch("https://api.openai.com/v1/decisions", {
     method: "POST",
@@ -127,11 +209,11 @@ export async function decide(
           role: "user",
           content: [
             { type: "input_text", text: contextText(recent, motion) },
-            { type: "input_image", image_url: imageDataUrl, detail: "low" },
+            ...images,
           ],
         },
       ],
-      questions: QUESTIONS,
+      questions: reference ? [...QUESTIONS, SAME_AS_LAST] : QUESTIONS,
     }),
   });
   const latencyMs = Date.now() - startedAt;
@@ -147,37 +229,57 @@ export async function decide(
     const a = byName.get(name);
     return a?.type === "choice" && allowed.includes(a.choice as T) ? (a.choice as T) : fallback;
   };
-  const urgency = byName.get("urgency");
+  const score = (name: string) => {
+    const a = byName.get(name);
+    return a?.type === "score" ? a.score : 0;
+  };
 
   return {
     hazard_close: prob("hazard_close"),
     worth_saying: prob("worth_saying"),
-    urgency: urgency?.type === "score" ? urgency.score : 0,
+    urgency: score("urgency"),
     subject: pick("subject", SUBJECTS, "other"),
     direction: pick("direction", DIRECTIONS, "ahead"),
+    distance: score("distance"),
+    same_as_last: reference ? prob("same_as_last") : null,
     latencyMs,
     stub: false,
   };
 }
 
 // Fake answers so the phone side works before the API key does.
-export function stubAnswers(): Answers {
+export function stubAnswers(hasReference: boolean): Answers {
   const roll = Math.random();
-  const base = { latencyMs: 0, stub: true };
-  if (roll < 0.05) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead" };
-  if (roll < 0.15) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "obstacle", direction: "right" };
-  return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead" };
+  const same_as_last = hasReference ? (Math.random() < 0.7 ? 0.9 : 0.1) : null;
+  const base = { same_as_last, latencyMs: 0, stub: true };
+  if (roll < 0.05) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead", distance: 1.9 };
+  if (roll < 0.15) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "chair", direction: "right", distance: 1.1 };
+  return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead", distance: 0.2 };
 }
 
 const SUBJECT_OBJECTS: Record<Answers["subject"], string> = {
-  obstacle: "obstacle",
   person: "person",
+  chair: "chair",
+  table: "table",
+  bench: "bench",
+  pole: "pole",
+  trash_can: "trash can",
   stairs: "stairs",
+  curb: "curb",
   door: "door",
-  sign: "sign",
+  wall: "wall",
+  bicycle: "bike",
   vehicle: "vehicle",
+  sign: "sign",
+  other_obstacle: "obstacle",
   other: "something",
 };
+
+function toDistance(score: number): Distance {
+  if (score >= THRESHOLDS.distanceClose) return "close";
+  if (score >= THRESHOLDS.distanceNear) return "near";
+  return "far";
+}
 
 // Every alarm Echo can sound, so the phone can preload their audio.
 export function urgentWarnings(): Warning[] {
@@ -191,32 +293,67 @@ export function urgentWarnings(): Warning[] {
   );
 }
 
-// Routes answers to silence, a warning, or an urgent warning (the alarm).
-// Templates, not an LLM.
-export function toAnnouncement(a: Answers, recent: Recent[], history: Past[] = []): Announcement | null {
-  const warning: Warning = { kind: "warning", object: SUBJECT_OBJECTS[a.subject], direction: a.direction };
+// Identifies a warning by what and where, ignoring wording and urgency.
+export function announcementKey(a: Announcement): string | undefined {
+  return a.kind === "warning" ? `${a.object}|${a.direction ?? "ahead"}` : undefined;
+}
+
+export function isSameObject(a: Answers): boolean {
+  return a.same_as_last !== null && a.same_as_last >= THRESHOLDS.sameObject;
+}
+
+// Routes answers to silence, words, or the alarm. Templates, not an LLM.
+//
+// Echo speaks up about new things right away and then lets them be: the same
+// thing gets the alarm again only if it is getting closer, and otherwise an
+// occasional spoken reminder while the wearer walks, further apart each time.
+export function toAnnouncement(
+  a: Answers,
+  recent: Recent[],
+  history: Past[],
+  motion: Motion | null,
+  reference: Pick<Reference, "secondsAgo" | "mentions"> | null,
+): Announcement | null {
+  const warning: Warning = {
+    kind: "warning",
+    object: SUBJECT_OBJECTS[a.subject],
+    direction: a.direction,
+    distance: toDistance(a.distance),
+  };
+  const lastSpokeS = Math.min(Infinity, ...recent.map((r) => r.secondsAgo));
+  const lastAlarmS = Math.min(Infinity, ...recent.filter((r) => r.urgent).map((r) => r.secondsAgo));
+  const same = isSameObject(a);
+  const window = history.filter((h) => h.secondsAgo <= THRESHOLDS.alarmConfirmWindowS).slice(-2);
+
+  // A reminder about the same thing, spaced 15 s, 30 s, 60 s, 60 s... apart.
+  const reminderDue = () => {
+    if (!reference || motion?.walking === false) return false;
+    const wait = Math.min(
+      THRESHOLDS.reminderFirstS * 2 ** (reference.mentions - 1),
+      THRESHOLDS.reminderMaxS,
+    );
+    return reference.secondsAgo >= wait;
+  };
 
   if (overAlarmLine(a)) {
-    const confirming = history
-      .filter((h) => h.secondsAgo <= THRESHOLDS.alarmConfirmWindowS)
-      .slice(-2)
-      .filter(overAlarmLine).length;
-    const confirmed = 1 + confirming >= THRESHOLDS.alarmConfirmFrames;
+    const confirmed = 1 + window.filter(overAlarmLine).length >= THRESHOLDS.alarmConfirmFrames;
+    if (!confirmed || lastAlarmS < THRESHOLDS.alarmGapS) return null;
 
-    const alarm: Warning = { ...warning, urgent: true };
-    const phrase = toPhrase(alarm);
-    const tooSoon = recent.some(
-      (r) =>
-        (r.urgent && r.secondsAgo < THRESHOLDS.alarmGapS) ||
-        (r.text === phrase && r.secondsAgo < THRESHOLDS.alarmRepeatS),
-    );
-    // While an alarm waits for confirmation or cools down, stay quiet rather
-    // than saying the same hazard as words.
-    return confirmed && !tooSoon ? alarm : null;
+    const approaching =
+      window.length > 0 &&
+      (a.hazard_close - window[0].hazard_close >= THRESHOLDS.approachRise ||
+        a.distance - window[0].distance >= THRESHOLDS.approachDistanceRise);
+    if (!same || approaching) return { ...warning, urgent: true };
+    // The same hazard, holding still: a reminder in words, not the tone.
+    return reminderDue() ? warning : null;
   }
 
-  const phrase = toPhrase(warning);
-  const repeat = recent.some((r) => r.text === phrase && r.secondsAgo < THRESHOLDS.wordsRepeatS);
-  if (a.worth_saying >= THRESHOLDS.words && !repeat) return warning;
-  return null;
+  if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
+  // Head turns sweep things through view; let them settle before speaking.
+  if (motion?.turning) return null;
+  if (same) return reminderDue() ? warning : null;
+
+  const key = announcementKey(warning);
+  const samePhrase = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.samePhraseS);
+  return samePhrase ? null : warning;
 }
