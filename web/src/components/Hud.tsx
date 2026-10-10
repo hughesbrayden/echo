@@ -36,12 +36,18 @@ const TONE_BG: Record<Severity, string> = {
 export function TopBar({ live, motion, demo }: { live: boolean; motion: Motion | null; demo: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="echo-glass flex items-center gap-2 rounded-full py-1.5 pr-4 pl-2">
+      {/* Site navigation: the story at "/" is a static page, so these are plain links. */}
+      <nav aria-label="Site" className="echo-glass flex items-center gap-1 rounded-full p-1 text-sm font-medium">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--echo-accent)]/20">
           <EchoMark className="h-5 w-5 text-[var(--echo-accent)]" />
         </span>
-        <span className="text-lg font-semibold">Echo</span>
-      </div>
+        <a href="/" className="rounded-full px-3 py-1.5 text-white/70 hover:text-white">
+          Story
+        </a>
+        <a href="/demo" aria-current="page" className="rounded-full bg-white/15 px-3 py-1.5 whitespace-nowrap text-white">
+          Live demo
+        </a>
+      </nav>
       <div className="flex items-center gap-2">
         {live && motion && (
           <span className="echo-glass hidden rounded-full px-3 py-2 text-sm text-white/85 min-[370px]:inline">

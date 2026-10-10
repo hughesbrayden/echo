@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
+  // The landing page is the Echo story, a standalone page in public/ (see
+  // scripts/port-story.py). The camera app lives at /demo.
+  async rewrites() {
+    return { beforeFiles: [{ source: "/", destination: "/story.html" }], afterFiles: [], fallback: [] };
+  },
   turbopack: {
     rules: {
       "*.css": {
