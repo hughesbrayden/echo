@@ -83,6 +83,22 @@ export type Past = { hazard_close: number; urgency: number; distance: number; se
 // mentioned that thing in a row.
 export type Reference = { imageDataUrl: string; text: string; secondsAgo: number; mentions: number };
 
+// The background narrator's latest summary (see narrator.ts), passed along
+// so the stateless decision model knows what has been happening.
+export type NarrationContext = {
+  summary: string;
+  secondsAgo: number;
+  // Set only when the last two narrations agree the ground goes up or down.
+  groundDirection: "up" | "down" | null;
+};
+
+// Older summaries are ignored: the scene has likely moved on.
+const NARRATION_MAX_AGE_S = 15;
+
+function freshNarration(n: NarrationContext | null): NarrationContext | null {
+  return n && n.secondsAgo <= NARRATION_MAX_AGE_S ? n : null;
+}
+
 export const THRESHOLDS = {
   alarmHazard: 0.8,
   alarmUrgency: 2.5,
@@ -222,7 +238,7 @@ const QUESTIONS = [
   },
 ];
 
-function contextText(recent: Recent[], motion: Motion | null): string {
+function contextText(recent: Recent[], motion: Motion | null, narration: NarrationContext | null): string {
   recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
   const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
@@ -238,6 +254,8 @@ function contextText(recent: Recent[], motion: Motion | null): string {
       lines.push(`The wearer is looking about ${Math.abs(motion.headOffset)}° to the ${side} of where they are walking.`);
     }
   }
+  const fresh = freshNarration(narration);
+  if (fresh) lines.push(`What has been happening (${Math.round(fresh.secondsAgo)}s ago): ${fresh.summary}`);
   lines.push(
     recent.length === 0
       ? "Echo has said nothing recently."
@@ -266,6 +284,7 @@ export async function decide(
   motion: Motion | null,
   apiKey: string,
   reference: Reference | null = null,
+  narration: NarrationContext | null = null,
 ): Promise<Answers> {
   const images = reference
     ? [
@@ -289,7 +308,7 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: contextText(recent, motion) },
+            { type: "input_text", text: contextText(recent, motion, narration) },
             ...images,
           ],
         },
@@ -445,11 +464,24 @@ function toGuidance(
 // the time the wearer reaches them the warning would be forgotten. Steps,
 // curbs and stairs get "Slow down." since the cane needs to find the edge;
 // ramps just get named.
-function toGroundWarning(a: Answers): Warning | null {
+// Up or down only comes from the narrator, which judges it across frames and
+// head pitch; one frame got it wrong in tests.
+const GROUND_OBJECT: Record<Answers["ground_kind"], Record<"up" | "down", string>> = {
+  ramp: { up: "ramp going up", down: "ramp going down" },
+  step: { up: "a step up", down: "a step down" },
+  curb: { up: "a step up at the curb", down: "a step down at the curb" },
+  stairs: { up: "stairs going up", down: "stairs going down" },
+};
+
+function toGroundWarning(a: Answers, direction: "up" | "down" | null): Warning | null {
   if (a.ground_change < THRESHOLDS.groundChange) return null;
   const distance = toDistance(a.ground_distance);
   if (distance === "far") return null;
-  const object = a.ground_kind === "step" ? "a step" : a.ground_kind;
+  const object = direction
+    ? GROUND_OBJECT[a.ground_kind][direction]
+    : a.ground_kind === "step"
+      ? "a step"
+      : a.ground_kind;
   const slow = a.ground_kind !== "ramp";
   return { kind: "warning", ground: true, object, direction: "ahead", distance, guidance: slow ? "slow" : undefined };
 }
@@ -469,6 +501,7 @@ export function toAnnouncement(
   history: Past[],
   motion: Motion | null,
   reference: Pick<Reference, "secondsAgo" | "mentions"> | null,
+  narration: NarrationContext | null = null,
 ): Announcement | null {
   const lookingUp = !!motion && motion.pitch > THRESHOLDS.lookingUpPitch;
   const lookingAway = !!motion && Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg;
@@ -512,7 +545,7 @@ export function toAnnouncement(
 
   // Height changes come next: they matter while walking whatever else is in
   // view, and stay quiet for a while once said.
-  const ground = lookingUp ? null : toGroundWarning(a);
+  const ground = lookingUp ? null : toGroundWarning(a, freshNarration(narration)?.groundDirection ?? null);
   if (ground) {
     const key = announcementKey(ground);
     const said = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.groundRepeatS);
