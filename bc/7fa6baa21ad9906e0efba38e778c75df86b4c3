@@ -1,0 +1,28 @@
+web/src/components/Camera.tsx
+  s_b87fa4f29fcc9c::t_230d3a80bb1f37 393-411,424-425,428-429,433-443,445-449,452-454,457-458,461-465,467-469,496,515,524
+  s_b87fa4f29fcc9c::t_e107e3a2cfe8b6 432
+  s_b87fa4f29fcc9c::t_853fbca9e152c7 450-451,455-456,459-460
+web/src/components/Announcer.tsx
+  s_b87fa4f29fcc9c::t_cbaaa9c099222f 15-17,32,45,66-71,76-82
+web/next.config.ts
+  s_b87fa4f29fcc9c::t_cbaaa9c099222f 4-6
+web/src/components/Hud.tsx
+  s_b87fa4f29fcc9c::t_e107e3a2cfe8b6 146-151
+  s_b87fa4f29fcc9c::t_230d3a80bb1f37 45,64,122-123,130-133,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc7fa6baa21ad9906e0efba38e778c75df86b4c3",
+  "prompts": {},
+  "sessions": {
+    "s_b87fa4f29fcc9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e4f670c-92b8-42e1-b9c9-236f427e50ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sethian Kho <gabriel.d.kho@gmail.com>"
+    }
+  }
+}
