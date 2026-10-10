@@ -23,6 +23,10 @@ const TESTS: { label: string; announcement: Announcement }[] = [
     announcement: { kind: "warning", advice: "stop", object: "person", direction: "ahead", urgent: true, guidance: "right" },
   },
   {
+    label: "Sound check",
+    announcement: { kind: "description", text: "Sound check. If you can hear this, Echo's voice is working." },
+  },
+  {
     label: "Describe",
     announcement: {
       kind: "description",

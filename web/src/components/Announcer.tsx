@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playAlarm } from "@/lib/alarm";
 import { toPhrase, toSegments, type Announcement } from "@/lib/announce";
-import { preload, speakAll, stopSpeaking, type Voice } from "@/lib/speech";
+import { lastSoundProblem, preload, speakAll, stopSpeaking, type Voice } from "@/lib/speech";
 import { severityOf, type Severity } from "@/components/Hud";
 
 type Props = {
@@ -29,6 +29,8 @@ export default function Announcer({ announcement, className }: Props) {
   const [severity, setSeverity] = useState<Severity>("info");
   // Shown under the caption when the nicer voice wasn't used or nothing played.
   const [voice, setVoice] = useState<Voice | null>(null);
+  // Why nothing played, when nothing did.
+  const [problem, setProblem] = useState<string | null>(null);
   const hideRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function Announcer({ announcement, className }: Props) {
       setCaption(toPhrase(announcement!));
       setSeverity(severityOf(announcement!));
       setVoice(null);
+      setProblem(null);
       if (isWarning) warningRef.current = id;
       if (urgent) {
         stopSpeaking();
@@ -55,7 +58,10 @@ export default function Announcer({ announcement, className }: Props) {
       }
       if (latestRef.current === id) {
         const used = await speakAll(segments);
-        if (latestRef.current === id && used !== "skipped") setVoice(used);
+        if (latestRef.current === id && used !== "skipped") {
+          setVoice(used);
+          setProblem(used === "none" ? lastSoundProblem() : null);
+        }
       }
       // A reminder about this thing often follows; have its words ready.
       const a = announcement!;
@@ -95,6 +101,7 @@ export default function Announcer({ announcement, className }: Props) {
         {voice === "none" && <span className="ml-auto text-xs font-normal text-white/70">No sound played</span>}
       </div>
       <p className="mt-1.5 text-2xl leading-snug font-semibold text-white">{caption}</p>
+      {problem && <p className="mt-2 text-xs leading-snug text-white/60">{problem}</p>}
     </div>
   );
 }

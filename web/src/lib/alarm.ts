@@ -1,7 +1,7 @@
-// The one tone Echo has, and it means stop now. Built with Web Audio so there
-// are no sound files to load.
+// The one tone Echo has, and it means stop now. Computed in code so there
+// are no sound files to load, and played like any other clip.
 
-import { audioContext, ensureAudioRunning, sleep } from "@/lib/audio";
+import { playUrl, wavUrl } from "@/lib/audio";
 
 // Two quick falling chimes: urgent enough to cut through, soft enough not to
 // grate. Sine waves with a fast attack and gentle decay, no hard edges.
@@ -11,37 +11,35 @@ const NOTES = [
 ];
 const NOTE_SEC = 0.22;
 const VOLUME = 0.3;
+const SAMPLE_RATE = 24000;
+const ATTACK_SEC = 0.01;
 
-// Plays the alarm and resolves when it ends. If audio can't run, it resolves
+let tone: string | null = null;
+
+function toneUrl(): string {
+  if (tone) return tone;
+  const total = NOTES[NOTES.length - 1].at + NOTE_SEC;
+  const samples = new Float32Array(Math.ceil(total * SAMPLE_RATE));
+  for (const { freq, at } of NOTES) {
+    const start = Math.floor(at * SAMPLE_RATE);
+    const length = Math.floor(NOTE_SEC * SAMPLE_RATE);
+    for (let i = 0; i < length && start + i < samples.length; i++) {
+      const t = i / SAMPLE_RATE;
+      // Linear attack, then an exponential fall to 0.001 by the note's end.
+      const env = t < ATTACK_SEC ? t / ATTACK_SEC : Math.pow(0.001, (t - ATTACK_SEC) / (NOTE_SEC - ATTACK_SEC));
+      samples[start + i] += VOLUME * env * Math.sin(2 * Math.PI * freq * t);
+    }
+  }
+  tone = wavUrl(samples, SAMPLE_RATE);
+  return tone;
+}
+
+// Plays the alarm and resolves when it ends. If audio can't play, it resolves
 // at once so the spoken words still follow; it never hangs.
 export async function playAlarm(): Promise<void> {
-  if (!(await ensureAudioRunning())) return;
-  const audio = audioContext();
-  const t0 = audio.currentTime + 0.01;
-
-  const out = audio.createGain();
-  out.gain.value = VOLUME;
-  out.connect(audio.destination);
-
-  let last: OscillatorNode | null = null;
-  for (const { freq, at } of NOTES) {
-    const t = t0 + at;
-    const osc = audio.createOscillator();
-    const env = audio.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(1, t + 0.01);
-    env.gain.exponentialRampToValueAtTime(0.001, t + NOTE_SEC);
-    osc.connect(env).connect(out);
-    osc.start(t);
-    osc.stop(t + NOTE_SEC);
-    last = osc;
+  try {
+    await playUrl(toneUrl());
+  } catch (e) {
+    console.warn("Alarm tone couldn't play", e);
   }
-
-  const durationMs = (NOTES[NOTES.length - 1].at + NOTE_SEC) * 1000;
-  await Promise.race([
-    new Promise<void>((resolve) => (last!.onended = () => resolve())),
-    sleep(durationMs + 300),
-  ]);
 }
