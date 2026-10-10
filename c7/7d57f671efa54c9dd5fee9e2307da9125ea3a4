@@ -1,0 +1,29 @@
+web/src/components/Announcer.tsx
+  s_b87fa4f29fcc9c::t_c5a48554818767 7,26,69-78,80,83-89
+  s_b87fa4f29fcc9c::t_02b83fc70b0737 42
+  s_b87fa4f29fcc9c::t_cdf786a63d1e8c 79
+web/src/components/Hud.tsx
+  s_b87fa4f29fcc9c::t_0fc8417801c2c4 1-148,150-174,176-259,261-304,307,309-319
+  s_b87fa4f29fcc9c::t_4b7cb458516988 149,175
+  s_b87fa4f29fcc9c::t_abb71c206e6ca6 260,305-306,308
+web/src/app/globals.css
+  s_b87fa4f29fcc9c::t_02b83fc70b0737 4-10,23-112
+web/src/components/Camera.tsx
+  s_b87fa4f29fcc9c::t_f7806ff1e8d2a0 7-16,91-94,120-124,183,209-213,278,380,402-422,424,434-458,460-473,475-484,487-488,491-516,519-525,527-541,543-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c77d57f671efa54c9dd5fee9e2307da9125ea3a4",
+  "prompts": {},
+  "sessions": {
+    "s_b87fa4f29fcc9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e4f670c-92b8-42e1-b9c9-236f427e50ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sethian Kho <gabriel.d.kho@gmail.com>"
+    }
+  }
+}
