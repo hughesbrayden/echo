@@ -90,9 +90,13 @@ VIDEO = (
 )
 
 body = swap('<a class="nav-cta" href="#film">Watch the walk</a>', site_nav("story"), body)
-body = swap(' <span class="tag">Video coming</span>', "", body)
-film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
-body = body.replace(film, VIDEO, 1)
+if 'src="media/echo-walk-01.mp4"' in body:
+    # Newer versions embed the recording themselves; point it at the site's copy.
+    body = body.replace('"media/echo-walk-01.', '"/media/echo-walk-01.')
+else:
+    body = swap(' <span class="tag">Video coming</span>', "", body)
+    film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
+    body = body.replace(film, VIDEO, 1)
 # Older versions end on a closing slide; give it a way into the live demo.
 if '<p class="limits">Echo is an early heads-up' in body:
     body = swap(
@@ -105,7 +109,11 @@ if '<p class="limits">Echo is an early heads-up' in body:
 # now, so the live demo is the recording of a real walk.
 header = one(r'<header class="nav">.*?</header>', body).group(0)
 header = header.replace(site_nav("story"), site_nav("demo")).replace('href="#', 'href="/#')
-limits = one(r'<p class="limits(?:-line)?">.*?</p>', body).group(0).replace('class="limits-line"', 'class="limits"')
+m = re.search(r'<p class="limits(?:-line)?">.*?</p>', body, re.S)
+limits = m.group(0).replace('class="limits-line"', 'class="limits"') if m else (
+    '<p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, '
+    'never instead of one, and it never says a path is clear.</p>'
+)
 header = header.replace('href="/#top"', 'href="/"')
 brand = one(r'<a class="brand" href="/">.*?</a>', header).group(0)
 footer = f'<footer>\n    <div class="wrap foot">\n      {brand}\n      {limits}\n    </div>\n  </footer>'
