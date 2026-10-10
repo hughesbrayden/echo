@@ -4,7 +4,7 @@
 export type Direction = "left" | "ahead" | "right";
 export type Distance = "close" | "near" | "far";
 // Which way to go: around an object on that side, keep away from something
-// beside the wearer, or wait when there is no clear way around.
+// beside the wearer, or wait for a person or vehicle with no clear way around.
 export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait";
 
 export type Warning = {
@@ -59,7 +59,7 @@ function command(g: Guidance, close: boolean): string {
     case "keep_right":
       return "Keep right.";
     case "wait":
-      return "No clear way around. Wait.";
+      return "Wait.";
   }
 }
 
