@@ -93,7 +93,7 @@ The phone posts each frame to `POST /api/frame` (multipart) and the server repli
 
 ```
 in:  frame (JPEG), motion (JSON: walking, turning, yawDeg, stepsPerSecond, tiltDeg), recent (JSON: [{ text, secondsAgo, urgent, advice, key }]),
-     history (JSON: last 2 frames' stop, distance, gate), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
+     history (JSON: last 2 frames' stop, distance, gate), previous (JPEG, the frame before) + previousInfo (JSON: secondsAgo), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
 out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, room_left, room_right, latencyMs, stub } }
 ```
 

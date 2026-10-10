@@ -86,6 +86,9 @@ export type Past = { stop: number; distance: number; gate: number; secondsAgo: n
 // mentioned that thing in a row.
 export type Reference = { imageDataUrl: string; text: string; secondsAgo: number; mentions: number };
 
+// The frame just before this one, so the model can see what is moving.
+export type Previous = { imageDataUrl: string; secondsAgo: number };
+
 export const THRESHOLDS = {
   // The alarm.
   stop: 0.8,
@@ -199,7 +202,7 @@ const NEW_IN_VIEW = {
   type: "predicate",
   name: "new_in_view",
   instructions:
-    "The thing that matters most for the wearer's navigation in image 2 was not in image 1, or is clearly closer than it was.",
+    "The thing that matters most for the wearer's navigation in the newest frame was not in the frame from when Echo last spoke, or is clearly closer than it was.",
 };
 
 // Comes before the image: who is wearing the camera and how they are moving.
@@ -274,18 +277,32 @@ export async function decide(
   motion: Motion | null,
   apiKey: string,
   reference: Reference | null = null,
+  previous: Previous | null = null,
 ): Promise<Answers> {
-  const images = reference
-    ? [
-        {
-          type: "input_text",
-          text: `Image 1: the frame when Echo said '${reference.text}', ${Math.round(reference.secondsAgo)}s ago.`,
-        },
-        { type: "input_image", image_url: reference.imageDataUrl, detail: "low" },
-        { type: "input_text", text: "Image 2: the newest frame. All other questions are about image 2." },
-        { type: "input_image", image_url: imageDataUrl, detail: "low" },
-      ]
-    : [{ type: "input_image", image_url: imageDataUrl, detail: "low" }];
+  // Oldest first, each labelled, so the newest frame is last and clearly the
+  // one the questions are about.
+  const image = (url: string) => ({ type: "input_image", image_url: url, detail: "low" });
+  const images = [
+    ...(reference
+      ? [
+          {
+            type: "input_text",
+            text: `The frame from when Echo said '${reference.text}', ${Math.round(reference.secondsAgo)}s ago:`,
+          },
+          image(reference.imageDataUrl),
+        ]
+      : []),
+    ...(previous
+      ? [
+          { type: "input_text", text: `The previous frame, ${previous.secondsAgo.toFixed(1)}s ago:` },
+          image(previous.imageDataUrl),
+        ]
+      : []),
+    ...(reference || previous
+      ? [{ type: "input_text", text: "The newest frame. Every question is about this one:" }]
+      : []),
+    image(imageDataUrl),
+  ];
 
   const startedAt = Date.now();
   const res = await fetch("https://api.openai.com/v1/decisions", {

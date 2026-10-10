@@ -35,6 +35,9 @@ const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
 // Echo forgets what it last spoke about after this long.
 const REFERENCE_MAX_AGE_MS = 90_000;
+// The frame before this one goes along too, so the model can see motion,
+// unless it is older than this (e.g. the last request failed).
+const PREVIOUS_MAX_AGE_MS = 2_000;
 // How far back the spoken log reaches.
 const RECENT_MAX_AGE_MS = 120_000;
 
@@ -51,6 +54,7 @@ export default function Camera() {
   const saidRef = useRef<{ text: string; at: number; urgent: boolean; advice?: Advice; key?: string }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
+  const previousRef = useRef<{ blob: Blob; at: number } | null>(null);
   const historyRef = useRef<{ stop: number; distance: number; gate: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -145,6 +149,7 @@ export default function Camera() {
     saidRef.current = [];
     historyRef.current = [];
     referenceRef.current = null;
+    previousRef.current = null;
     setStatus("idle");
   }
 
@@ -195,6 +200,16 @@ export default function Camera() {
         })),
       ),
     );
+
+    // Skipped when Echo just spoke, since the reference frame is then the
+    // previous frame.
+    const previous = previousRef.current;
+    const referenceAt = referenceRef.current?.at ?? -Infinity;
+    if (previous && now - previous.at < PREVIOUS_MAX_AGE_MS && previous.at > referenceAt) {
+      form.append("previous", previous.blob, "previous.jpg");
+      form.append("previousInfo", JSON.stringify({ secondsAgo: (now - previous.at) / 1000 }));
+    }
+    previousRef.current = { blob, at: now };
 
     const reference = referenceRef.current;
     if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {

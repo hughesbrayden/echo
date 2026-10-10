@@ -11,6 +11,7 @@ import {
   toAnnouncement,
   type Answers,
   type Past,
+  type Previous,
   type Recent,
   type Reference,
 } from "@/lib/decisions";
@@ -48,11 +49,14 @@ export async function POST(request: Request) {
   let history: Past[];
   // When Echo last spoke about something, and how many times in a row.
   let referenceInfo: Omit<Reference, "imageDataUrl"> | null;
+  // How old the frame before this one is.
+  let previousInfo: Omit<Previous, "imageDataUrl"> | null;
   try {
     motion = parseJson<Motion | null>(form, "motion", null);
     recent = parseJson<Recent[]>(form, "recent", []);
     history = parseJson<Past[]>(form, "history", []);
     referenceInfo = parseJson<Omit<Reference, "imageDataUrl"> | null>(form, "referenceInfo", null);
+    previousInfo = parseJson<Omit<Previous, "imageDataUrl"> | null>(form, "previousInfo", null);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 400 });
   }
@@ -64,13 +68,20 @@ export async function POST(request: Request) {
       ? { ...referenceInfo, imageDataUrl: await toDataUrl(referenceFrame) }
       : null;
 
+  // The frame just before this one, so the model can see what is moving.
+  const previousFrame = form.get("previous");
+  const previous: Previous | null =
+    previousInfo && previousFrame instanceof File && previousFrame.type.startsWith("image/")
+      ? { ...previousInfo, imageDataUrl: await toDataUrl(previousFrame) }
+      : null;
+
   const apiKey = process.env.OPENAI_API_KEY;
   let answers: Answers;
   try {
     if (!apiKey || process.env.ECHO_STUB === "1") {
       answers = stubAnswers(reference !== null);
     } else {
-      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference);
+      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous);
     }
   } catch (e) {
     // The phone skips this frame rather than speaking late.
