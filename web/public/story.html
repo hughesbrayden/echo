@@ -459,6 +459,28 @@ footer { margin-top: clamp(72px, 8vw, 112px); }
 html.is-deck .chapter-head { margin-bottom: 24px; }
 html.is-deck .question { margin: 0; border-top: 0; padding-top: 0; }
 
+/* Deck fit: slide 1 carries the question; slide 2 puts the intro beside the console */
+html.is-deck #problem .chapter-head { margin-bottom: 18px; align-items: end; }
+html.is-deck #problem h1.chap { font-size: clamp(34px, 3.4vw, 50px); line-height: 1.06; }
+html.is-deck #problem .drawing { padding: 14px 20px; }
+html.is-deck #problem .drawing svg { max-height: clamp(170px, calc(100vh - 540px), 300px); }
+html.is-deck #problem .drawing-foot { padding-top: 12px; margin-top: 4px; }
+html.is-deck #problem .question { margin: 18px 0 0; padding-top: 18px; border-top: 1px solid var(--line); grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: center; }
+html.is-deck #problem .question .q-ask { font-size: clamp(26px, 2.5vw, 38px); line-height: 1.12; max-width: none; }
+html.is-deck .echo-grid { display: grid; grid-template-columns: minmax(250px, 3fr) minmax(0, 8fr); gap: clamp(24px, 3vw, 44px); align-items: center; }
+html.is-deck .echo-grid .chapter-head { margin: 0; }
+html.is-deck .echo-grid h2 { font-size: clamp(32px, 3vw, 46px); line-height: 1.06; }
+html.is-deck .echo-grid .lede { max-width: none !important; font-size: clamp(16px, 1.25vw, 18px); }
+html.is-deck .echo-grid .view { min-height: 0; }
+html.is-deck .echo-grid .con-body { min-height: clamp(340px, calc(100vh - 340px), 500px); }
+html.is-deck .echo-grid > * { min-width: 0; }
+html.is-deck .echo-grid .side section { padding: 9px 14px; gap: 6px; }
+html.is-deck .echo-grid .outcome { padding: 6px 10px; }
+html.is-deck .echo-grid .score { row-gap: 0; }
+html.is-deck .echo-grid .strip-meta > span:last-child { display: none; }
+
+html.is-deck .echo-grid .con-title .pill:nth-of-type(3) { display: none; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -570,22 +592,20 @@ html.is-deck .deck-ch .brand { display: none; }
         </div>
       </figure>
 
-    </div>
-  </section>
-
-  <section class="slide center" data-ch="problem" data-title="The question">
-    <div class="wrap slide-inner">
       <div class="question">
         <span class="eyebrow">The question</span>
         <div class="q-body">
           <p class="q-ask">How might we tell the rest of the story, <em>without expensive specialist hardware?</em></p>
         </div>
       </div>
+
     </div>
   </section>
 
+
   <section class="slide " id="echo" data-ch="echo" data-title="Echo">
     <div class="wrap slide-inner">
+      <div class="echo-grid">
       <div class="chapter-head solo">
         <div class="head-l">
           <span class="eyebrow"><b>02</b> The solution</span>
@@ -636,6 +656,7 @@ html.is-deck .deck-ch .brand { display: none; }
           <div class="strip" id="strip" aria-hidden="true"></div>
           <div class="strip-meta"><span class="k"><span>Silence</span><span class="v">A few words</span><span class="a">Alarm</span></span><span>Last 30 s · one mark per decision · scores simulated, routed with Echo's real thresholds</span></div>
         </div>
+      </div>
       </div>
 
     </div>
@@ -913,7 +934,7 @@ html.is-deck .deck-ch .brand { display: none; }
   <div class="deck-in">
     <div class="deck-ch" id="deck-ch"></div>
     <div class="deck-ctl">
-      <span class="deck-n mono" id="deck-n">1 / 11</span>
+      <span class="deck-n mono" id="deck-n">1 / 10</span>
       <button class="btn" id="deck-prev" type="button" aria-label="Previous slide">Back</button>
       <button class="btn deck-next" id="deck-next" type="button" aria-label="Next slide">Next</button>
     </div>
