@@ -93,17 +93,19 @@ body = swap('<a class="nav-cta" href="#film">Watch the walk</a>', site_nav("stor
 body = swap(' <span class="tag">Video coming</span>', "", body)
 film = one(r'<div class="card film-frame".*?</div>\n        </div>', body).group(0)
 body = body.replace(film, VIDEO, 1)
-body = swap(
-    '<p class="limits">Echo is an early heads-up',
-    '<a class="closer-cta" href="/demo">Watch the live demo</a>\n        <p class="limits">Echo is an early heads-up',
-    body,
-)
+# Older versions end on a closing slide; give it a way into the live demo.
+if '<p class="limits">Echo is an early heads-up' in body:
+    body = swap(
+        '<p class="limits">Echo is an early heads-up',
+        '<a class="closer-cta" href="/demo">Watch the live demo</a>\n        <p class="limits">Echo is an early heads-up',
+        body,
+    )
 
 # The demo page shares the story's nav and footer. The camera app is switched off for
 # now, so the live demo is the recording of a real walk.
 header = one(r'<header class="nav">.*?</header>', body).group(0)
 header = header.replace(site_nav("story"), site_nav("demo")).replace('href="#', 'href="/#')
-limits = one(r'<p class="limits">.*?</p>', body).group(0)
+limits = one(r'<p class="limits(?:-line)?">.*?</p>', body).group(0).replace('class="limits-line"', 'class="limits"')
 header = header.replace('href="/#top"', 'href="/"')
 brand = one(r'<a class="brand" href="/">.*?</a>', header).group(0)
 footer = f'<footer>\n    <div class="wrap foot">\n      {brand}\n      {limits}\n    </div>\n  </footer>'
