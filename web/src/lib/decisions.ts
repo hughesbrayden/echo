@@ -28,13 +28,30 @@ export type Answers = {
   stub: boolean;
 };
 
-export type Recent = { text: string; secondsAgo: number };
+export type Recent = { text: string; secondsAgo: number; urgent?: boolean };
+
+// Answers from the frames just before this one, newest last.
+export type Past = { hazard_close: number; urgency: number; secondsAgo: number };
 
 export const THRESHOLDS = {
   alarmHazard: 0.8,
   alarmUrgency: 2.5,
   words: 0.7,
+  // The alarm needs this many of the last 3 frames (this one included) over
+  // the line, so one noisy frame can't set it off.
+  alarmConfirmFrames: 2,
+  // Frames older than this don't count toward confirming.
+  alarmConfirmWindowS: 2.5,
+  // The same alarm phrase stays quiet this long after it was said.
+  alarmRepeatS: 10,
+  // Any two alarms are at least this far apart.
+  alarmGapS: 4,
+  wordsRepeatS: 10,
 };
+
+function overAlarmLine(a: { hazard_close: number; urgency: number }): boolean {
+  return a.hazard_close >= THRESHOLDS.alarmHazard && a.urgency >= THRESHOLDS.alarmUrgency;
+}
 
 const QUESTIONS = [
   {
@@ -176,14 +193,30 @@ export function urgentWarnings(): Warning[] {
 
 // Routes answers to silence, a warning, or an urgent warning (the alarm).
 // Templates, not an LLM.
-export function toAnnouncement(a: Answers, recent: Recent[]): Announcement | null {
+export function toAnnouncement(a: Answers, recent: Recent[], history: Past[] = []): Announcement | null {
   const warning: Warning = { kind: "warning", object: SUBJECT_OBJECTS[a.subject], direction: a.direction };
-  if (a.hazard_close >= THRESHOLDS.alarmHazard && a.urgency >= THRESHOLDS.alarmUrgency) {
-    return { ...warning, urgent: true };
+
+  if (overAlarmLine(a)) {
+    const confirming = history
+      .filter((h) => h.secondsAgo <= THRESHOLDS.alarmConfirmWindowS)
+      .slice(-2)
+      .filter(overAlarmLine).length;
+    const confirmed = 1 + confirming >= THRESHOLDS.alarmConfirmFrames;
+
+    const alarm: Warning = { ...warning, urgent: true };
+    const phrase = toPhrase(alarm);
+    const tooSoon = recent.some(
+      (r) =>
+        (r.urgent && r.secondsAgo < THRESHOLDS.alarmGapS) ||
+        (r.text === phrase && r.secondsAgo < THRESHOLDS.alarmRepeatS),
+    );
+    // While an alarm waits for confirmation or cools down, stay quiet rather
+    // than saying the same hazard as words.
+    return confirmed && !tooSoon ? alarm : null;
   }
-  // Don't repeat the same phrase within 10 s.
+
   const phrase = toPhrase(warning);
-  const repeat = recent.some((r) => r.text === phrase && r.secondsAgo < 10);
+  const repeat = recent.some((r) => r.text === phrase && r.secondsAgo < THRESHOLDS.wordsRepeatS);
   if (a.worth_saying >= THRESHOLDS.words && !repeat) return warning;
   return null;
 }

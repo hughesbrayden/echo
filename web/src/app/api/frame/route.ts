@@ -4,7 +4,7 @@
 
 import type { Announcement } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
-import { decide, stubAnswers, toAnnouncement, type Answers, type Recent } from "@/lib/decisions";
+import { decide, stubAnswers, toAnnouncement, type Answers, type Past, type Recent } from "@/lib/decisions";
 
 // Sit close to OpenAI to cut a network hop.
 export const preferredRegion = "iad1";
@@ -51,6 +51,17 @@ export async function POST(request: Request) {
     }
   }
 
+  // Answers for the previous frames, so the alarm can wait for confirmation.
+  let history: Past[] = [];
+  const rawHistory = form.get("history");
+  if (typeof rawHistory === "string") {
+    try {
+      history = JSON.parse(rawHistory);
+    } catch {
+      return Response.json({ error: "Invalid history JSON" }, { status: 400 });
+    }
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   let answers: Answers;
   try {
@@ -65,6 +76,6 @@ export async function POST(request: Request) {
     return Response.json({ error: String(e) }, { status: 502 });
   }
 
-  const body: FrameResponse = { announcement: toAnnouncement(answers, recent), bytes: frame.size, answers };
+  const body: FrameResponse = { announcement: toAnnouncement(answers, recent, history), bytes: frame.size, answers };
   return Response.json(body);
 }
