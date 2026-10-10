@@ -117,20 +117,18 @@ function freshNarration(n: NarrationContext | null): NarrationContext | null {
 export const THRESHOLDS = {
   // The alarm.
   stop: 0.8,
-  // Course and footing speak above this; orienting needs more, since missing
-  // a door costs less than missing a curb.
-  act: 0.7,
-  orient: 0.85,
+  // Course and footing speak above this; orienting needs a bit more, since
+  // missing a door costs less than missing a curb. Broad questions like
+  // these come back less crisp than concrete ones, so the lines sit lower.
+  act: 0.55,
+  orient: 0.65,
   // Right after Echo speaks, every bar above is raised by this much, easing
   // back to normal over wordsBarEaseS. Echo can still speak soon after, but
   // only about something the model is sure of. The alarm skips this.
-  wordsBarRaise: 0.2,
-  wordsBarEaseS: 15,
+  wordsBarRaise: 0.1,
+  wordsBarEaseS: 8,
   // Words wait this long after Echo last spoke, so it never talks over itself.
   wordsGapS: 3,
-  // Words need the frame before to agree (its highest gate at least this),
-  // so one odd frame can't make Echo talk. Close things skip the wait.
-  wordsConfirm: 0.5,
   // The alarm needs this many of the last 3 frames (this one included) over
   // the line, so one noisy frame can't set it off.
   alarmConfirmFrames: 2,
@@ -170,7 +168,7 @@ export const THRESHOLDS = {
   reminderMaxS: 60,
   // The same thing in the same place isn't said again for this long. Without
   // a reference frame, this is what stops repeats.
-  samePhraseS: 20,
+  samePhraseS: 12,
 };
 
 // Where the main thing meets the ground, top to bottom of the frame. With the
@@ -642,12 +640,8 @@ export function toAnnouncement(
   const words = (): Announcement | null => {
     const advice = pickAdvice(a, lastSpokeS);
     if (!advice) return null;
-    // Nothing nameable: not worth words.
-    if (a.subject === "other" && advice !== "footing") return null;
-    // One frame isn't enough unless the thing is already close.
-    const prev = history[history.length - 1];
-    const confirmed = distance === "close" || (prev !== undefined && prev.gate >= THRESHOLDS.wordsConfirm);
-    if (!confirmed) return null;
+    // Nothing nameable is only worth a landmark line if it's named.
+    if (a.subject === "other" && advice === "orient") return null;
 
     if (advice === "footing") {
       // The ground has to be in view, and far height changes wait: by the
@@ -674,7 +668,7 @@ export function toAnnouncement(
     const warning: Warning = {
       kind: "warning",
       advice,
-      object,
+      object: a.subject === "other" ? "obstacle" : object,
       direction: a.direction,
       distance,
       guidance: advice === "course" ? toGuidance(a, distance, false, lookingAway) : undefined,
