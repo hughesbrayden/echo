@@ -22,7 +22,8 @@ const TESTS: { label: string; announcement: Announcement }[] = [
   },
 ];
 
-// How often to send a frame, and how wide to scale it before upload.
+// The shortest gap between frames, and how wide to scale them before upload.
+// One frame is in flight at a time; the next goes as soon as the reply lands.
 const FRAME_INTERVAL_MS = 500;
 const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
@@ -38,7 +39,8 @@ export default function Camera() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
-  const inFlightRef = useRef(false);
+  // Bumped on every start and stop so a loop from an earlier run ends.
+  const loopRef = useRef(0);
   const motionRef = useRef<MotionTracker | null>(null);
   const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
@@ -48,7 +50,6 @@ export default function Camera() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(0);
-  const [skipped, setSkipped] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [motion, setMotion] = useState<Motion | null>(null);
@@ -97,7 +98,7 @@ export default function Camera() {
         motionRef.current.start();
       }
 
-      timerRef.current = window.setInterval(sendFrame, FRAME_INTERVAL_MS);
+      void frameLoop(++loopRef.current);
       setStatus("running");
     } catch (e) {
       setStatus("error");
@@ -106,7 +107,8 @@ export default function Camera() {
   }
 
   function stop() {
-    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    loopRef.current++;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     motionRef.current?.stop();
     motionRef.current = null;
@@ -120,12 +122,17 @@ export default function Camera() {
     setStatus("idle");
   }
 
+  // Sends the newest frame, waits for the reply, then sends the next one, so
+  // there is never a stale frame queued and no idle wait after a slow reply.
+  async function frameLoop(loop: number) {
+    const startedAt = performance.now();
+    await sendFrame();
+    if (loop !== loopRef.current) return;
+    const wait = Math.max(0, FRAME_INTERVAL_MS - (performance.now() - startedAt));
+    timerRef.current = window.setTimeout(() => void frameLoop(loop), wait);
+  }
+
   async function sendFrame() {
-    // A late answer is worse than none, so drop frames while a call is pending.
-    if (inFlightRef.current) {
-      setSkipped((n) => n + 1);
-      return;
-    }
     const blob = await captureFrame();
     if (!blob) return;
 
@@ -175,7 +182,6 @@ export default function Camera() {
       );
     }
 
-    inFlightRef.current = true;
     const startedAt = performance.now();
     try {
       const res = await fetch("/api/frame", { method: "POST", body: form });
@@ -203,8 +209,6 @@ export default function Camera() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      inFlightRef.current = false;
     }
   }
 
@@ -238,7 +242,7 @@ export default function Camera() {
       >
         {running && (
           <p className="font-mono text-sm">
-            sent {sent} · skipped {skipped} · {latencyMs ?? "–"} ms
+            sent {sent} · {latencyMs ?? "–"} ms
           </p>
         )}
         {running && motion && (

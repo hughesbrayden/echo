@@ -57,7 +57,7 @@ Run context and trends first, since they decide most of the quality. Personal ru
 
 ## Sound
 
-Echo has one tone, and it means stop now. A short, harsh alarm plays the moment the decision answers cross the emergency threshold, cuts off anything else, and is followed by a canned phrase like "Stop. Person ahead." Everything non-urgent is a few spoken words with no tone.
+Echo has one tone, and it means stop now. A short two-note falling chime (soft sine tones, so it cuts through without grating) plays the moment the decision answers cross the emergency threshold, cuts off anything else, and is followed by a canned phrase like "Stop. Person ahead." Everything non-urgent is a few spoken words with no tone.
 
 The alarm only works if people trust it, so keep false alarms rare. Build it in the browser with the Web Audio API: no sound files, about 10 lines of code.
 
@@ -117,7 +117,7 @@ Cut until M2 works: a speaking LLM, the cheap pre-check, motion sensors, and the
 
 ### Streaming
 
-The Decisions API takes images, not video. The camera streams live in the browser and the page sends a 640px JPEG every 500 ms, skipping any frame while a call is still pending, so it always sends the newest view. Sending two frames for motion is a hypothesis to test.
+The Decisions API takes images, not video. The camera streams live in the browser and the page sends a 640px JPEG as soon as the previous reply lands (at most every 500 ms), so one call is in flight at a time and it always sends the newest view. Sending two frames for motion is a hypothesis to test.
 
 ### Recorded demo (M4)
 

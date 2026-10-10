@@ -3,7 +3,9 @@
 // screen facing the wearer, so a head turn is rotation around the device y axis.
 
 export type Motion = {
-  // Peak yaw rate since the last frame, deg/s. Positive is a turn to the left.
+  // Average yaw rate since the last frame, deg/s. Positive is a turn to the
+  // left. Averaging cancels the side-to-side wobble of walking, so only a
+  // real head turn counts.
   yawRate: number;
   // RMS of acceleration with gravity removed, m/s².
   accelRms: number;
@@ -14,7 +16,7 @@ export type Motion = {
 
 // Starting thresholds, meant to be tuned on recorded walks.
 const WALKING_ACCEL_RMS = 0.6;
-const TURNING_YAW_RATE = 45;
+const TURNING_YAW_RATE = 30;
 
 type MotionPermission = { requestPermission?: () => Promise<"granted" | "denied"> };
 
@@ -31,13 +33,12 @@ export async function requestMotionPermission(): Promise<boolean> {
 }
 
 export class MotionTracker {
-  private yawPeak = 0;
+  private yawSum = 0;
   private accelSqSum = 0;
   private samples = 0;
 
   private onMotion = (e: DeviceMotionEvent) => {
-    const yaw = e.rotationRate?.gamma ?? 0;
-    if (Math.abs(yaw) > Math.abs(this.yawPeak)) this.yawPeak = yaw;
+    this.yawSum += e.rotationRate?.gamma ?? 0;
 
     const a = e.acceleration;
     if (a) {
@@ -57,14 +58,15 @@ export class MotionTracker {
   // Returns the summary since the last call and starts a new window.
   take(): Motion {
     const accelRms = this.samples ? Math.sqrt(this.accelSqSum / this.samples) : 0;
+    const yawRate = this.samples ? this.yawSum / this.samples : 0;
     const motion: Motion = {
-      yawRate: Math.round(this.yawPeak),
+      yawRate: Math.round(yawRate),
       accelRms: Math.round(accelRms * 100) / 100,
       walking: accelRms > WALKING_ACCEL_RMS,
-      turning: Math.abs(this.yawPeak) > TURNING_YAW_RATE,
+      turning: Math.abs(yawRate) > TURNING_YAW_RATE,
       samples: this.samples,
     };
-    this.yawPeak = 0;
+    this.yawSum = 0;
     this.accelSqSum = 0;
     this.samples = 0;
     return motion;
