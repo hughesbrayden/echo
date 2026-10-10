@@ -5,7 +5,7 @@ import { audioContext } from "@/lib/audio";
 
 // Canned phrases like "Stop. Person ahead." repeat, so keep their audio.
 // Requests in flight are shared, so a preload and a speak never both fetch.
-const MAX_CACHED = 100;
+const MAX_CACHED = 150;
 const cache = new Map<string, Promise<AudioBuffer>>();
 
 // Past this wait the words would be late, so the browser voice says them.
