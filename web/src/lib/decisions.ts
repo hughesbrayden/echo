@@ -32,6 +32,10 @@ const SUBJECTS = [
   "other",
 ] as const;
 const DIRECTIONS = ["left", "ahead", "right"] as const;
+// Height changes in the walking path. Up vs. down is not asked: from one
+// frame it came out unreliable in tests, and a wrong "up" before stairs going
+// down is worse than none.
+const GROUND_KINDS = ["ramp", "step", "curb", "stairs"] as const;
 
 export type Answers = {
   // 0..1: something in the path within ~2 m could be walked into or fallen from.
@@ -51,6 +55,11 @@ export type Answers = {
   // Null when the model declined to answer, e.g. no floor in view.
   room_left: number | null;
   room_right: number | null;
+  // 0..1: the ground in the path changes height within a few steps.
+  ground_change: number;
+  ground_kind: (typeof GROUND_KINDS)[number];
+  // 0..2, like distance: how far ahead the height change starts.
+  ground_distance: number;
   // Time spent waiting on the Decisions API.
   latencyMs: number;
   // True when the answers are fake because no API key is set.
@@ -97,6 +106,10 @@ export const THRESHOLDS = {
   distanceNear: 0.5,
   // Below this on both sides, there is no clear way around.
   roomMin: 0.5,
+  // Above this, the ground changes height ahead.
+  groundChange: 0.7,
+  // The same height change isn't mentioned again for this long.
+  groundRepeatS: 30,
   // Something still in view gets a spoken reminder after this long, doubling
   // each time up to the max, and only while the wearer is walking.
   reminderFirstS: 15,
@@ -166,6 +179,28 @@ const QUESTIONS = [
     name: "room_right",
     instructions:
       "There is open floor to the right of the main thing in the walking path, wide enough for the wearer to walk past it on that side.",
+  },
+  {
+    type: "predicate",
+    name: "ground_change",
+    instructions:
+      "Within a few steps along the walking path, the ground changes height: a ramp or slope, a step, a curb, or stairs.",
+  },
+  {
+    type: "choice",
+    name: "ground_kind",
+    instructions: "What changes the ground height in the walking path.",
+    choices: GROUND_KINDS.map((value) => ({ value })),
+  },
+  {
+    type: "score",
+    name: "ground_distance",
+    instructions: "How far ahead the height change starts.",
+    levels: [
+      { label: "far", description: "More than about 3 meters away" },
+      { label: "near", description: "About 1 to 3 meters away" },
+      { label: "close", description: "Within about 1 meter, a step or two" },
+    ],
   },
 ];
 
@@ -263,6 +298,9 @@ export async function decide(
     same_as_last: reference ? prob("same_as_last") : null,
     room_left: probOrNull("room_left"),
     room_right: probOrNull("room_right"),
+    ground_change: prob("ground_change"),
+    ground_kind: pick("ground_kind", GROUND_KINDS, "step"),
+    ground_distance: score("ground_distance"),
     latencyMs,
     stub: false,
   };
@@ -272,7 +310,16 @@ export async function decide(
 export function stubAnswers(hasReference: boolean): Answers {
   const roll = Math.random();
   const same_as_last = hasReference ? (Math.random() < 0.7 ? 0.9 : 0.1) : null;
-  const base = { same_as_last, room_left: 0.8, room_right: 0.3, latencyMs: 0, stub: true };
+  const base = {
+    same_as_last,
+    room_left: 0.8,
+    room_right: 0.3,
+    ground_change: roll > 0.95 ? 0.9 : 0.05,
+    ground_kind: "curb" as const,
+    ground_distance: 1.2,
+    latencyMs: 0,
+    stub: true,
+  };
   if (roll < 0.05) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead", distance: 1.9 };
   if (roll < 0.15) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "chair", direction: "right", distance: 1.1 };
   return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead", distance: 0.2 };
@@ -316,7 +363,10 @@ export function urgentWarnings(): Warning[] {
 
 // Identifies a warning by what and where, ignoring wording and urgency.
 export function announcementKey(a: Announcement): string | undefined {
-  return a.kind === "warning" ? `${a.object}|${a.direction ?? "ahead"}` : undefined;
+  if (a.kind !== "warning") return undefined;
+  // Ground changes are keyed by distance too, so "close" can follow "near".
+  if (a.ground) return `ground|${a.object}|${a.distance}`;
+  return `${a.object}|${a.direction ?? "ahead"}`;
 }
 
 // Things to walk around. Stairs, curbs, doors, walls and signs are named but
@@ -353,6 +403,20 @@ function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance |
     return close && MOVES.has(a.subject) ? "wait" : undefined;
   }
   return a.room_left >= a.room_right ? "left" : "right";
+}
+
+// A ramp, step, curb or stairs in the path, said once when it is near ("Curb,
+// just ahead. Slow down.") and once more when it is close. Far ones wait: by
+// the time the wearer reaches them the warning would be forgotten. Steps,
+// curbs and stairs get "Slow down." since the cane needs to find the edge;
+// ramps just get named.
+function toGroundWarning(a: Answers): Warning | null {
+  if (a.ground_change < THRESHOLDS.groundChange) return null;
+  const distance = toDistance(a.ground_distance);
+  if (distance === "far") return null;
+  const object = a.ground_kind === "step" ? "a step" : a.ground_kind;
+  const slow = a.ground_kind !== "ramp";
+  return { kind: "warning", ground: true, object, direction: "ahead", distance, guidance: slow ? "slow" : undefined };
 }
 
 export function isSameObject(a: Answers): boolean {
@@ -408,6 +472,18 @@ export function toAnnouncement(
     // The same hazard, holding still: a reminder in words, not the tone.
     return reminderDue() ? reminder : null;
   }
+
+  // Height changes come next: they matter while walking whatever else is in
+  // view, and stay quiet for a while once said.
+  const ground = toGroundWarning(a);
+  if (ground) {
+    const key = announcementKey(ground);
+    const said = recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.groundRepeatS);
+    if (!said && lastSpokeS >= THRESHOLDS.wordsGapS) return ground;
+  }
+  // Stairs and curbs are left to the height-change warning.
+  const groundSubject = a.subject === "stairs" || a.subject === "curb";
+  if (groundSubject && a.ground_change >= THRESHOLDS.groundChange) return null;
 
   if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
   // Head turns sweep things through view; let them settle before speaking.
