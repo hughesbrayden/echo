@@ -45,6 +45,9 @@ css += """
 .site a[aria-current="page"] { background: var(--ink); color: #FFFFFF; }
 .film-video { position: relative; justify-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; border-radius: 28px; overflow: hidden; background: var(--ink); }
 .film-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.map-row .film-video { flex: 1; width: 100%; aspect-ratio: auto; min-height: 320px; }
+.map-row .film-video video { position: absolute; inset: 0; object-fit: contain; }
+@media (max-width: 960px) { .map-row .film-video { flex: none; align-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; } }
 .cta { margin-top: clamp(112px, 13vw, 180px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--ink); color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
 .cta h2 { color: #FFFFFF; max-width: 14ch; }
 .cta p { color: rgba(255, 255, 255, 0.72); max-width: 44ch; margin-top: 16px; }
