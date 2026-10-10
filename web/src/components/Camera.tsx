@@ -4,16 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
-import {
-  AlarmFlash,
-  EchoMark,
-  MotionPanel,
-  NarrationStrip,
-  SignalPanel,
-  StatusBar,
-  TargetMarker,
-  Viewfinder,
-} from "@/components/Hud";
+import { AroundYou, Details, EchoMark, FocusHalo, StopGlow, TopBar } from "@/components/Hud";
 import { KEEP_WALKING, commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
@@ -24,11 +15,11 @@ import { DEFAULT_EYE_HEIGHT_M, cameraSetup, type CameraSetup } from "@/lib/geome
 // Sample announcements for the test buttons.
 const TESTS: { label: string; announcement: Announcement }[] = [
   {
-    label: "Warning",
+    label: "Heads up",
     announcement: { kind: "warning", object: "chair", direction: "ahead", distance: "near", guidance: "left" },
   },
   {
-    label: "Alarm",
+    label: "Stop",
     announcement: { kind: "warning", object: "person", direction: "ahead", urgent: true, guidance: "right" },
   },
   {
@@ -90,8 +81,8 @@ export default function Camera() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   // Bumped on every urgent warning so the red flash replays.
   const [alarms, setAlarms] = useState(0);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [hudOn, setHudOn] = useState(true);
+  // The numbers behind each decision, for the team.
+  const [showDetails, setShowDetails] = useState(false);
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
   const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
@@ -180,7 +171,6 @@ export default function Camera() {
 
       void frameLoop(run);
       void narrateLoop(run);
-      setStartedAt(Date.now());
       setStatus("running");
     } catch (e) {
       setVoiceProgress(null);
@@ -210,7 +200,6 @@ export default function Camera() {
     setMotion(null);
     setSent(0);
     setLatencyMs(null);
-    setStartedAt(null);
     setStatus("idle");
   }
 
@@ -401,27 +390,8 @@ export default function Camera() {
 
   const voicePct = voiceProgress ? Math.round((voiceProgress.loaded / Math.max(1, voiceProgress.total)) * 100) : 0;
 
-  const tests = (
-    <div className="flex items-center gap-1.5">
-      <span className="mr-1 font-mono text-[9px] tracking-[0.25em] text-white/40 uppercase">Simulate</span>
-      {TESTS.map((t) => (
-        <button
-          key={t.label}
-          type="button"
-          onClick={() => {
-            unlockAudio();
-            announce({ ...t.announcement });
-          }}
-          className="h-8 flex-1 rounded-full border border-white/15 bg-white/5 px-3 text-xs font-medium text-white/80 transition active:scale-95 active:bg-white/15"
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
-    <main className="relative flex h-dvh flex-1 flex-col overflow-hidden bg-black select-none">
+    <main className="relative flex h-dvh flex-1 flex-col overflow-hidden bg-[var(--background)] select-none">
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -431,73 +401,71 @@ export default function Camera() {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Darken the edges so the HUD reads on any scene. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/70 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+      {/* Soften the edges so the words read on any scene. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/50 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
 
-      {running && hudOn && (
-        <>
-          <Viewfinder pitch={motion?.pitch ?? null} headOffset={motion?.headOffset ?? null} />
-          <TargetMarker answers={answers} />
-        </>
-      )}
-      {alarms > 0 && <AlarmFlash key={alarms} />}
+      {running && <FocusHalo answers={answers} />}
+      {alarms > 0 && <StopGlow key={alarms} />}
 
-      <div className="relative z-10 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <StatusBar
-          live={running}
-          startedAt={startedAt}
-          sent={sent}
-          latencyMs={latencyMs}
-          stub={!!answers?.stub}
-        />
-        {running && hudOn && (
-          <div className="mt-8 flex items-start justify-between gap-2">
-            <MotionPanel motion={motion} allowed={motionAllowed} />
-            <SignalPanel answers={answers} />
-          </div>
-        )}
+      <div className="relative z-10 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <TopBar live={running} motion={motion} demo={!!answers?.stub} />
       </div>
 
       {!running && (
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <div className="relative flex h-40 w-40 items-center justify-center">
-            <div className="absolute inset-0 rounded-full border border-white/10" />
-            <div className="absolute inset-5 rounded-full border border-white/10" />
-            <div className="absolute inset-10 rounded-full border border-white/10" />
-            <div className="hud-sweep absolute inset-0 rounded-full" />
-            <EchoMark className="relative h-12 w-12 text-[var(--hud-accent)]" />
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <div className="relative flex h-36 w-36 items-center justify-center">
+            <span className="echo-ripple absolute inset-0 rounded-full" />
+            <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:1.2s]" />
+            <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:2.4s]" />
+            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--echo-accent)]/15">
+              <EchoMark className="h-10 w-10 text-[var(--echo-accent)]" />
+            </span>
           </div>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight">Echo</h1>
-          <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/60">
-            Sees the path ahead. Speaks only when it matters.
+          <h1 className="mt-8 text-3xl font-semibold">A calm voice for the way ahead</h1>
+          <p className="mt-3 max-w-xs text-lg leading-relaxed text-white/65">
+            Echo stays quiet while you walk, and speaks up only when something is in your way.
           </p>
         </div>
       )}
 
-      <div className="relative z-10 mt-auto flex flex-col gap-2 px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {running && hudOn && <NarrationStrip narration={narration} />}
+      <div className="relative z-10 mt-auto flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {running && showDetails && (
+          <Details
+            answers={answers}
+            motion={motion}
+            motionAllowed={motionAllowed}
+            sent={sent}
+            latencyMs={latencyMs}
+          />
+        )}
+        {running && <AroundYou narration={narration} />}
         <Announcer announcement={announcement} />
 
-        {voiceNote && (
-          <p className="truncate px-1 font-mono text-[10px] text-[var(--hud-warn)]/80" title={voiceNote}>
-            ⚠ {voiceNote}
-          </p>
-        )}
-        {error && (
-          <p className="rounded-xl bg-[var(--hud-alarm)]/10 px-3 py-2 text-xs text-[var(--hud-alarm)]">{error}</p>
-        )}
+        {error && <p className="rounded-2xl bg-[var(--echo-stop)]/15 px-4 py-3 text-sm text-white/90">{error}</p>}
 
-        <div className="hud-glass flex flex-col gap-3 rounded-3xl p-3">
-          {tests}
+        <div className="echo-glass flex flex-col gap-3 rounded-[2rem] p-3">
+          <div className="flex items-center gap-2">
+            {TESTS.map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                onClick={() => {
+                  unlockAudio();
+                  announce({ ...t.announcement });
+                }}
+                aria-label={`Play a sample: ${t.label}`}
+                className="h-11 flex-1 rounded-full bg-white/8 text-sm font-medium text-white/85 transition active:scale-95 active:bg-white/15"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
           {(status === "idle" || status === "error") && (
-            <label className="flex items-center justify-between px-1 text-sm text-white/80">
-              <span>
-                Eye height
-                <span className="ml-2 font-mono text-[10px] text-white/40">for distance</span>
-              </span>
-              <span className="flex items-center gap-1.5 font-mono">
+            <label className="flex items-center justify-between px-2 text-base text-white/85">
+              Eye height
+              <span className="flex items-center gap-2">
                 <input
                   type="number"
                   inputMode="numeric"
@@ -505,10 +473,10 @@ export default function Camera() {
                   max={220}
                   value={eyeHeightCm}
                   onChange={(e) => changeEyeHeight(Number(e.target.value))}
-                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-right tabular-nums outline-none focus:border-[var(--hud-accent)]"
+                  className="w-20 rounded-xl bg-white/10 px-3 py-2 text-right text-base tabular-nums outline-none focus:ring-2 focus:ring-[var(--echo-accent)]"
                   aria-label="Eye height in centimetres"
                 />
-                <span className="text-xs text-white/50">cm</span>
+                <span className="text-sm text-white/55">cm</span>
               </span>
             </label>
           )}
@@ -518,42 +486,35 @@ export default function Camera() {
               type="button"
               onClick={running ? stop : start}
               disabled={status === "starting"}
-              className={`relative h-14 flex-1 overflow-hidden rounded-2xl text-lg font-semibold tracking-wide transition active:scale-[0.98] disabled:opacity-90 ${
-                running
-                  ? "border border-[var(--hud-alarm)]/50 bg-[var(--hud-alarm)]/15 text-[var(--hud-alarm)]"
-                  : "bg-[var(--hud-accent)] text-black shadow-[0_0_32px_rgb(94_230_255/0.35)]"
+              className={`relative h-16 flex-1 overflow-hidden rounded-full text-xl font-semibold transition active:scale-[0.98] disabled:opacity-90 ${
+                running ? "bg-white/12 text-white" : "bg-[var(--echo-accent)] text-neutral-900"
               }`}
             >
               {status === "starting" && voiceProgress && (
                 <span
-                  className="absolute inset-y-0 left-0 bg-black/15 transition-[width] duration-200"
+                  className="absolute inset-y-0 left-0 bg-white/30 transition-[width] duration-200"
                   style={{ width: `${voicePct}%` }}
                 />
               )}
               <span className="relative">
-                {running
-                  ? "Stop"
-                  : status === "starting"
-                    ? voiceProgress
-                      ? `Loading voice · ${voiceProgress.loaded}/${voiceProgress.total}`
-                      : "Starting…"
-                    : "Start Echo"}
+                {running ? "Stop Echo" : status === "starting" ? "Getting ready…" : "Start Echo"}
               </span>
             </button>
             {running && (
               <button
                 type="button"
-                onClick={() => setHudOn((v) => !v)}
-                aria-pressed={hudOn}
-                className={`h-14 w-14 rounded-2xl border font-mono text-[10px] font-semibold tracking-widest transition active:scale-95 ${
-                  hudOn ? "border-[var(--hud-accent)]/40 text-[var(--hud-accent)]" : "border-white/15 text-white/50"
+                onClick={() => setShowDetails((v) => !v)}
+                aria-pressed={showDetails}
+                className={`h-16 rounded-full px-5 text-sm font-medium transition active:scale-95 ${
+                  showDetails ? "bg-white text-neutral-900" : "bg-white/12 text-white/80"
                 }`}
               >
-                HUD
+                Details
               </button>
             )}
           </div>
         </div>
+        {voiceNote && <p className="truncate px-2 text-xs text-white/45" title={voiceNote}>{voiceNote}</p>}
       </div>
     </main>
   );
