@@ -13,6 +13,13 @@ export function audioContext(): AudioContext {
 // built-in voice start inside a user gesture. Speaking a silent utterance
 // here is what unlocks the built-in voice for later warnings.
 export function unlockAudio() {
+  // iOS mutes Web Audio when the ring switch is on silent, though the
+  // built-in voice still speaks. Echo's warnings must always be heard, so
+  // ask for media playback audio before the AudioContext starts. Safari
+  // 16.4+; older versions keep the default.
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session && session.type !== "playback") session.type = "playback";
+
   const audio = audioContext();
   if (audio.state !== "running") void audio.resume();
 
