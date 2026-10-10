@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playAlarm } from "@/lib/alarm";
 import { toPhrase, toSegments, type Announcement } from "@/lib/announce";
-import { preload, speak, stopSpeaking, type Voice } from "@/lib/speech";
+import { preload, speakAll, stopSpeaking, type Voice } from "@/lib/speech";
 
 type Props = {
   // Pass a new object each time something should be said.
@@ -14,7 +14,7 @@ type Props = {
 // Speaks whatever it is handed and shows it as a caption. Warnings cut off
 // descriptions; descriptions are dropped while a warning is still playing.
 // Urgent warnings sound the alarm tone first. A newer announcement stops an
-// older one between its parts, so "Bear left." never follows the wrong object.
+// older one, so "Bear left." never follows the wrong object.
 export default function Announcer({ announcement, className }: Props) {
   // Id of the warning currently being said, or 0.
   const warningRef = useRef(0);
@@ -44,16 +44,15 @@ export default function Announcer({ announcement, className }: Props) {
         // Fetch the words while the tone plays, unless they are preloaded.
         void preload(segments);
         await playAlarm();
-      } else {
-        // Fetch the command while the object is being said.
-        void preload(segments.slice(1));
       }
-      for (const { text, style, maxWaitMs } of segments) {
-        if (latestRef.current !== id) break;
-        const used = await speak(text, style, maxWaitMs);
-        if (latestRef.current === id && used !== "skipped") {
-          setVoice((prev) => (prev === "none" || prev === "browser" ? prev : used));
-        }
+      if (latestRef.current === id) {
+        const used = await speakAll(segments);
+        if (latestRef.current === id && used !== "skipped") setVoice(used);
+      }
+      // A reminder about this thing often follows; have its words ready.
+      const a = announcement!;
+      if (a.kind === "warning" && !a.urgent && !a.reminder) {
+        void preload([toSegments({ ...a, reminder: true })[0]]);
       }
       if (warningRef.current === id) warningRef.current = 0;
     }

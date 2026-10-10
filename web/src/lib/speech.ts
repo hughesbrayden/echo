@@ -5,8 +5,13 @@ import { audioContext, ensureAudioRunning, sleep } from "@/lib/audio";
 
 // Canned phrases like "Stop. Person ahead." repeat, so keep their audio.
 // Requests in flight are shared, so a preload and a speak never both fetch.
+// Pinned clips (alarms and commands loaded at Start) are never evicted.
 const MAX_CACHED = 150;
 const cache = new Map<string, Promise<AudioBuffer>>();
+const pinned = new Set<string>();
+
+// A clip request that takes longer than this has failed.
+const FETCH_TIMEOUT_MS = 8000;
 
 // Past this wait the words would be late, so the browser voice says them.
 const DEFAULT_MAX_WAIT_MS = 1200;
@@ -17,6 +22,10 @@ let generation = 0;
 
 export function stopSpeaking() {
   generation++;
+  stopPlayback();
+}
+
+function stopPlayback() {
   current?.stop();
   current = null;
   const synth = window.speechSynthesis;
@@ -26,53 +35,106 @@ export function stopSpeaking() {
 // Which voice said it, so the screen can show when sound failed.
 export type Voice = "gemini" | "browser" | "none" | "skipped";
 
-export async function speak(
-  text: string,
-  style?: string,
-  maxWaitMs = DEFAULT_MAX_WAIT_MS,
-): Promise<Voice> {
+export type Part = { text: string; style?: string; maxWaitMs?: number };
+
+export function speak(text: string, style?: string, maxWaitMs = DEFAULT_MAX_WAIT_MS): Promise<Voice> {
+  return speakAll([{ text, style, maxWaitMs }]);
+}
+
+// Says the parts in order, e.g. "Chair, a few steps ahead." then "Bear left.",
+// with Gemini audio. All parts start fetching at once. If a part isn't ready
+// in time, the browser voice says it and everything after it as one phrase:
+// iOS can mute Web Audio right after the browser voice speaks, so switching
+// back mid-announcement would drop the rest.
+export async function speakAll(parts: Part[]): Promise<Voice> {
   const mine = ++generation;
-  try {
-    const buffer = await withTimeout(synthesize(text, style), maxWaitMs);
+  const clips = parts.map((p) => synthesize(p.text, p.style));
+  clips.forEach((c) => c.catch(() => {}));
+
+  for (let i = 0; i < parts.length; i++) {
+    let buffer: AudioBuffer | null = null;
+    try {
+      buffer = await withTimeout(clips[i], parts[i].maxWaitMs ?? DEFAULT_MAX_WAIT_MS);
+    } catch (e) {
+      console.warn("Gemini audio not ready, using browser voice", e);
+    }
     if (mine !== generation) return "skipped";
-    stopSpeaking();
-    await play(buffer);
-    return "gemini";
-  } catch (e) {
-    if (mine !== generation) return "skipped";
-    console.warn("Gemini audio unavailable, using browser voice", e);
-    return (await speakWithBrowser(text)) ? "browser" : "none";
+    if (buffer) {
+      try {
+        stopPlayback();
+        await play(buffer);
+        if (mine !== generation) return "skipped";
+        continue;
+      } catch (e) {
+        console.warn("Web Audio unavailable, using browser voice", e);
+      }
+    }
+    const rest = parts
+      .slice(i)
+      .map((p) => p.text)
+      .join(" ");
+    return (await speakWithBrowser(rest)) ? "browser" : "none";
   }
+  return "gemini";
 }
 
 // Fetches audio ahead of time so these phrases play without waiting, a few
-// at a time and in the order given. Stops at the first failure, e.g. when no
-// Gemini key is set.
+// at a time and in the order given. Each clip gets one retry; if it still
+// fails, Gemini is likely down (or has no key) and the rest are skipped.
+// Resolves with how many phrases are not loaded.
 const PRELOAD_CONCURRENCY = 4;
 
-export async function preload(phrases: { text: string; style?: string }[]) {
+type PreloadOptions = {
+  // Keep these clips for the whole session.
+  pin?: boolean;
+  onProgress?: (loaded: number, total: number) => void;
+};
+
+export async function preload(
+  phrases: { text: string; style?: string }[],
+  { pin = false, onProgress }: PreloadOptions = {},
+): Promise<number> {
   const queue = [...phrases];
-  let failed = false;
+  let loaded = 0;
+  let gaveUp = false;
+  const load = async (text: string, style?: string) => {
+    if (pin) pinned.add(cacheKey(text, style));
+    try {
+      await synthesize(text, style);
+    } catch {
+      await synthesize(text, style);
+    }
+  };
   const worker = async () => {
-    while (!failed && queue.length) {
+    while (!gaveUp && queue.length) {
       const { text, style } = queue.shift()!;
       try {
-        await synthesize(text, style);
+        await load(text, style);
+        loaded++;
+        onProgress?.(loaded, phrases.length);
       } catch {
-        failed = true;
+        gaveUp = true;
       }
     }
   };
   await Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, worker));
+  return phrases.length - loaded;
+}
+
+function cacheKey(text: string, style?: string): string {
+  return `${style ?? ""}|${text}`;
 }
 
 function synthesize(text: string, style?: string): Promise<AudioBuffer> {
-  const key = `${style ?? ""}|${text}`;
+  const key = cacheKey(text, style);
   const cached = cache.get(key);
   if (cached) return cached;
 
   const pending = fetchAudio(text, style);
-  if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);
+  if (cache.size >= MAX_CACHED) {
+    const oldest = [...cache.keys()].find((k) => !pinned.has(k));
+    if (oldest) cache.delete(oldest);
+  }
   cache.set(key, pending);
   pending.catch(() => cache.delete(key));
   return pending;
@@ -83,6 +145,7 @@ async function fetchAudio(text: string, style?: string): Promise<AudioBuffer> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, style }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`/api/speak ${res.status}`);
   return audioContext().decodeAudioData(await res.arrayBuffer());
