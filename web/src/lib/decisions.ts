@@ -142,7 +142,7 @@ const QUESTIONS = [
     type: "predicate",
     name: "worth_saying",
     instructions:
-      "Something in or near the walking path, or a door, stairs or curb the wearer is heading toward, is worth calling out to a blind pedestrian right now. Things already in 'Recently said' only count if they are now clearly closer or in the way. Background objects, things far off to the side, and people walking away do not count.",
+      "Something in or near the walking path, or a door, stairs or curb the wearer is heading toward, is worth calling out to a blind pedestrian right now. Things already in 'What Echo said recently' only count if they are now clearly closer or in the way. Background objects, things far off to the side, and people walking away do not count.",
   },
   {
     type: "score",
@@ -191,8 +191,12 @@ const QUESTIONS = [
   },
 ];
 
-function contextText(recent: Recent[], motion: Motion | null): string {
-  recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
+// What Echo said this long ago or less goes in every call. Older context
+// belongs in the slower background summary.
+const TRANSCRIPT_S = 15;
+
+// Comes before the image: who is wearing the camera and how they move.
+function sceneText(motion: Motion | null): string {
   const lines = ["Head-mounted camera worn by a blind pedestrian."];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
@@ -201,12 +205,16 @@ function contextText(recent: Recent[], motion: Motion | null): string {
       lines.push("They are facing the way they walk, so the walking path is the floor in the lower middle of the image.");
     }
   }
-  lines.push(
-    recent.length === 0
-      ? "Echo has said nothing recently."
-      : "Recently said: " + recent.map((r) => `'${r.text}' ${Math.round(r.secondsAgo)}s ago`).join("; ") + ".",
-  );
   return lines.join(" ");
+}
+
+// Comes after the image, as background: Echo's own recent words, with alarms
+// marked so a warning reads differently from a passing mention.
+function transcriptText(recent: Recent[]): string {
+  recent = recent.filter((r) => r.secondsAgo < TRANSCRIPT_S).slice(-5);
+  if (recent.length === 0) return "Echo has said nothing in the last few seconds.";
+  const said = recent.map((r) => `'${r.text}'${r.urgent ? " (alarm)" : ""} ${Math.round(r.secondsAgo)}s ago`);
+  return "What Echo said recently: " + said.join("; ") + ".";
 }
 
 type RawAnswer =
@@ -252,8 +260,9 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: contextText(recent, motion) },
+            { type: "input_text", text: sceneText(motion) },
             ...images,
+            { type: "input_text", text: transcriptText(recent) },
           ],
         },
       ],
