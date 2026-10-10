@@ -524,6 +524,58 @@ html.is-deck .decision .q { padding: 8px 18px; gap: 2px 16px; }
 html.is-deck .decision .qcard-head { padding: 10px 18px; }
 html.is-deck .decision .qcard-foot { padding: 10px 18px; }
 
+/* 03: one comparison table */
+.hook { font-size: clamp(22px, 2vw, 28px); line-height: 1.2; letter-spacing: -0.025em; max-width: 22ch; justify-self: end; }
+.hook span { color: var(--voice); }
+.cmp { padding: 0; overflow: hidden; }
+.cmp-r { display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.cmp-r > div { padding: 14px 20px; min-width: 0; }
+.cmp-h { border-top: 0; background: var(--bg-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-3); }
+.cmp-h > div:first-child { text-transform: uppercase; letter-spacing: 0.08em; align-self: end; }
+.cmp-h b { display: block; font-family: var(--font-sans); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 2px; }
+.cmp-who { display: flex; flex-direction: column; gap: 3px; }
+.cmp-who b { font-size: 16px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+.cmp-who > span { font-size: 12.5px; color: var(--ink-3); }
+.cmp-c { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); }
+.cmp-c .tag { margin-left: 4px; }
+.mk { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; position: relative; }
+.mk.y { background: var(--voice); }
+.mk.y::after { content: ""; position: absolute; left: 6px; top: 3px; width: 4px; height: 8px; border: solid #FFFFFF; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.mk.n { background: var(--bg-3); }
+.mk.n::after { content: ""; position: absolute; left: 5px; right: 5px; top: 8px; height: 2px; background: var(--ink-3); border-radius: 1px; }
+.mk.p { background: linear-gradient(90deg, var(--voice) 50%, var(--bg-3) 50%); }
+.cmp-r.echo { background: var(--voice-soft); }
+.cmp-r.echo .cmp-c { color: var(--ink); font-weight: 500; }
+.cmp-r.echo .cmp-who b { font-size: 18px; font-weight: 600; }
+.cmp-note { margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
+@media (max-width: 760px) { .cmp-r { grid-template-columns: minmax(0, 1fr); } .cmp-h { display: none; } .hook { justify-self: start; } }
+/* 04: steps, why, numbers */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; counter-reset: none; }
+.steps li { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); min-width: 0; }
+.steps li:not(:last-child)::after { content: ""; position: absolute; right: -10px; top: 50%; width: 8px; height: 8px; border-top: 1.5px solid var(--line-strong); border-right: 1.5px solid var(--line-strong); transform: translateY(-50%) rotate(45deg); }
+.steps li.hl { border-color: var(--voice); background: var(--voice-soft); }
+.steps .n { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--voice); }
+.steps b { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+.steps p { font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.steps .t { margin-top: auto; padding-top: 6px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.steps .out { display: flex; gap: 4px; flex-wrap: wrap; }
+.steps .out i { font-style: normal; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--bg-3); color: var(--ink-2); }
+.steps .out i.w { background: var(--voice); color: #FFFFFF; }
+.steps .out i.a { background: var(--alarm); color: #FFFFFF; }
+.why { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; align-items: stretch; padding-top: 20px; border-top: 1px solid var(--line); }
+.why-t { display: flex; flex-direction: column; gap: 10px; }
+.why-h { font-size: clamp(22px, 2vw, 28px); line-height: 1.18; letter-spacing: -0.025em; }
+.why-h span { color: var(--voice); }
+.why-n { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.why-n div { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+.why-n b { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
+.why-n span { font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.limits-line { margin-top: 18px; font-size: 13px; color: var(--ink-3); }
+@media (max-width: 960px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .steps li::after { display: none; } .why { grid-template-columns: minmax(0, 1fr); } }
+html.is-deck .beat .chapter-head { margin-bottom: 20px; }
+.steps .n::before { display: none !important; }
+.mk.n { background: #E9ECF1; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -814,67 +866,16 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
           <span class="eyebrow"><b>03</b> What sets us apart</span>
           <h2 id="h-diff">Today you get effective or affordable. Echo is both.</h2>
         </div>
-        <p class="lede">Tools that help blind and low-vision people get around already exist. The ones that work well while you walk cost thousands or mean wearing a clunky rig, and the affordable ones wait to be asked or only beep.</p>
+        <p class="hook">The hard part isn't seeing. <span>It's deciding when to speak.</span></p>
       </div>
-      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>The market</button><button type="button" role="tab" data-i="1"><span>2</span>Our claim</button><button type="button" role="tab" data-i="2"><span>3</span>Four ways</button><button type="button" role="tab" data-i="3"><span>4</span>Built to be trusted</button></div>
-      <div class="panes">
-      <div class="pane on" data-tab="The market">
-
-      <div class="market">
-        <figure class="card land">
-          <svg viewBox="0 0 560 400" role="img" aria-label="Market map. Horizontal axis: cost to the wearer, low to high. Vertical axis: how much it helps while walking. Describer apps sit low cost and low help. Obstacle wearables sit in the middle. Dedicated assistive devices sit high cost and middle help. Echo sits alone at low cost and high help.">
-            <rect class="ld-q" x="60" y="20" width="230" height="160" rx="10"/>
-            <text class="ld-ql" x="74" y="42">EFFECTIVE AND AFFORDABLE</text>
-            <line class="ld-ax" x1="60" y1="340" x2="540" y2="340"/><line class="ld-ax" x1="60" y1="340" x2="60" y2="20"/>
-            <line class="ld-mid" x1="300" y1="20" x2="300" y2="340"/><line class="ld-mid" x1="60" y1="180" x2="540" y2="180"/>
-            <text class="ld-at" x="540" y="366" text-anchor="end">Cost to the wearer →</text>
-            <text class="ld-at" x="60" y="366">Low</text>
-            <text class="ld-at" transform="translate(30 340) rotate(-90)">Helps while walking →</text>
-            <g class="ld-pt"><circle cx="130" cy="280" r="7"/><text x="146" y="276">Describer apps</text><text class="ld-s" x="146" y="293">Wait to be asked</text></g>
-            <g class="ld-pt"><circle cx="350" cy="220" r="7"/><text x="366" y="216">Obstacle wearables</text><text class="ld-s" x="366" y="233">Beep, no words</text></g>
-            <g class="ld-pt"><circle cx="470" cy="150" r="7"/><text x="456" y="122" text-anchor="end">Dedicated devices</text><text class="ld-s" x="456" y="139" text-anchor="end">Thousands of dollars</text></g>
-            <g class="ld-echo"><circle class="ld-ring" cx="130" cy="88" r="16"/><circle cx="130" cy="88" r="8"/><text x="154" y="84">Echo</text><text class="ld-s" x="154" y="101">Speaks first, in words</text><text class="ld-s" x="154" y="117">About 1¢ a minute</text></g>
-          </svg>
-          <figcaption class="land-cap">Our reading of each category, not a measurement. <span class="tag">Prices to check</span></figcaption>
-        </figure>
-
-        <div class="today">
-          <span class="eyebrow">Where the market is today</span>
-          <div class="row"><span class="who">Be My AI · Meta AI · ChatGPT live video</span><h3>Describers: affordable, but you have to ask.</h3><p class="dim">They describe the scene well, but only when you stop and ask. Nobody can ask "is anything about to hit me?" every two seconds.</p></div>
-          <div class="row"><span class="who">Obstacle wearables, such as biped</span><h3>Wearables warn you, but only with beeps.</h3><p class="dim">A beep says something is there. It can't tell a chair from a person or the top of a staircase, and each calls for a different move.</p></div>
-          <div class="row"><span class="who">Dedicated assistive devices</span><h3>Purpose-built devices: capable, but priced out of reach.</h3><p class="dim">Specialist camera wearables cost thousands of dollars, which most people can't justify. <span class="tag">Price check pending</span></p></div>
-        </div>
+      <div class="card cmp" role="table" aria-label="How Echo compares with the tools available today">
+        <div class="cmp-r cmp-h" role="row"><div>Where the market is today</div><div><b>Effective</b>Warns you while you walk</div><div><b>Affordable</b>What it costs the wearer</div><div><b>Seamless</b>What you have to wear or hold</div></div>
+<div class="cmp-r"><div class="cmp-who"><b>Describer apps</b><span>Be My AI · Meta AI · ChatGPT live video</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Only when you stop and ask</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Low cost</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Phone in hand, or glasses</span></div></div>
+<div class="cmp-r"><div class="cmp-who"><b>Obstacle wearables</b><span>Such as Biped</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Warns, but only with beeps</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Mid-range</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Chest-mounted rig</span></div></div>
+<div class="cmp-r"><div class="cmp-who"><b>Dedicated devices</b><span>Specialist camera wearables</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Capable while you walk</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Thousands of dollars <span class="tag">Price check pending</span></span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Extra hardware to wear</span></div></div>
+<div class="cmp-r echo"><div class="cmp-who"><b><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</b><span>On everyday video glasses</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Speaks first, in words, only when it helps</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>About a cent a minute <span class="tag">Estimate</span></span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Built into glasses, nothing to hold</span></div></div>
       </div>
-
-      </div>
-      <div class="pane" data-tab="Our claim">
-      <div class="claim">
-        <div class="claim-h"><span class="eyebrow"><b>Echo</b></span><p>The hard part isn't seeing. <span>It's deciding when to speak.</span></p></div>
-        <div class="claim-c"><span class="i">Effective</span><h3>It speaks first, in words, only when it helps.</h3><p class="dim">No asking, no guessing what a beep means. "Bear left. Chair ahead." Then quiet again.</p></div>
-        <div class="claim-c"><span class="i">Affordable</span><h3>Everyday video glasses, about a cent a minute.</h3><p class="dim">Video glasses are now consumer hardware, and the decisions cost about a cent a minute to run. <span class="tag">Estimate</span></p></div>
-        <div class="claim-c"><span class="i">Seamless</span><h3>Built into glasses, not a clunky rig.</h3><p class="dim">No harness, no chest-mounted camera, no extra device to hold. It looks and wears like ordinary glasses.</p></div>
-      </div>
-
-      </div>
-      <div class="pane" data-tab="Four ways">
-      <div class="lanes-head"><span class="eyebrow">The same walk, heard four ways</span></div>
-      <div class="card lanes">
-        <div class="lanes-scroll"><svg id="lanes" viewBox="0 0 1160 470" role="img" aria-label="Four audio lanes over the same thirty-second walk past a chair, a door and a person. A narrator talks constantly. A describer is silent unless asked. An obstacle wearable beeps without words. Echo is silent except for two short phrases and one alarm."></svg></div>
-        <div class="lanes-cap"><span>Illustration of each approach over the same route.</span><span class="mono">0 to 30 s</span></div>
-      </div>
-
-      </div>
-      <div class="pane" data-tab="Built to be trusted">
-      <div class="pillars">
-        <div><span class="i">Built around silence</span><h3>Success is what it didn't say.</h3><p class="dim">Fewer words, without missing anything that mattered.</p></div>
-        <div><span class="i">Measured, not guessed</span><h3>It decides with probabilities.</h3><p class="dim">Thresholds we can test on recorded walks and tune.</p></div>
-        <div><span class="i">Trustworthy alarm</span><h3>It won't cry wolf.</h3><p class="dim">Two frames must agree before the chime, and it's kept for things that move.</p></div>
-        <div><span class="i">Personal</span><h3>It listens to your rules.</h3><p class="dim">"Doors and stairs always. People only if they're in my way."</p></div>
-        <div><span class="i">Honest</span><h3>It never says a path is clear.</h3><p class="dim">An early heads-up that works alongside your cane.</p></div>
-        <div><span class="i">Hands free</span><h3>Nothing to hold or tap.</h3><p class="dim">It talks, you keep walking. Your hands stay on your cane.</p></div>
-      </div>
-      </div>
-      </div>
+      <p class="cmp-note">Our reading of each category, not a measurement. <span class="tag">Prices to check</span></p>
     </div>
   </section>
 
@@ -885,88 +886,21 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
           <span class="eyebrow"><b>04</b> How we built it</span>
           <h2 id="h-built">Five steps, twice a second.</h2>
         </div>
-        <p class="lede">The phone sees and speaks. A small server asks a decision model a few navigation questions about each look, and plain code turns the answers into silence, words or the alarm.</p>
+        <p class="lede">The phone sees and speaks. A decision model answers a few navigation questions about each look, and plain code turns the answers into silence, words or the alarm.</p>
       </div>
-      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Pipeline</button><button type="button" role="tab" data-i="1"><span>2</span>Why a decision model</button><button type="button" role="tab" data-i="2"><span>3</span>Quiet until it matters</button></div>
-      <div class="panes">
-      <div class="pane on" data-tab="Pipeline">
-
-      <div class="card pipe">
-        <div class="pipe-scroll">
-          <svg viewBox="0 0 1160 330" role="img" aria-label="Pipeline: See two frames, remember context, decide with four gates, route with thresholds, speak with voice or chime, ending in silence, words or the alarm. Alongside, a slower narrator keeps track of the walk every 4 seconds.">
-            <path class="pp-wire" d="M206 120 H 238 M 420 120 H 452 M 634 120 H 666 M 848 120 H 880"/>
-            <path class="pp-pulse" d="M206 120 H 880"/>
-            <g><rect class="pp-node" x="24" y="40" width="182" height="160" rx="14"/>
-              <text class="pp-n" x="44" y="72">01 SEE</text><text class="pp-t" x="44" y="100">Two frames</text>
-              <text class="pp-s" x="44" y="124">Now and 0.5 s ago, so</text><text class="pp-s" x="44" y="142">it can see what moves.</text>
-              <text class="pp-m" x="44" y="182">BROWSER CAMERA</text></g>
-            <g><rect class="pp-node" x="238" y="40" width="182" height="160" rx="14"/>
-              <text class="pp-n" x="258" y="72">02 REMEMBER</text><text class="pp-t" x="258" y="100">Context</text>
-              <text class="pp-s" x="258" y="124">What Echo just said,</text><text class="pp-s" x="258" y="142">walking, head tilt.</text>
-              <text class="pp-m" x="258" y="182">MOTION SENSORS</text></g>
-            <g><rect class="pp-node-hi" x="452" y="40" width="182" height="160" rx="14"/>
-              <text class="pp-n" x="472" y="72">03 DECIDE</text><text class="pp-t" x="472" y="100">Four gates</text>
-              <text class="pp-s" x="472" y="124">Stop, course, footing,</text><text class="pp-s" x="472" y="142">orient. Then what, where.</text>
-              <text class="pp-m" x="472" y="182">OPENAI DECISIONS API</text></g>
-            <g><rect class="pp-node" x="666" y="40" width="182" height="160" rx="14"/>
-              <text class="pp-n" x="686" y="72">04 ROUTE</text><text class="pp-t" x="686" y="100">Thresholds</text>
-              <text class="pp-s" x="686" y="124">Plain code. Alarms need</text><text class="pp-s" x="686" y="142">two frames to agree.</text>
-              <text class="pp-m" x="686" y="182">VERCEL FUNCTION</text></g>
-            <g><rect class="pp-node" x="880" y="40" width="182" height="160" rx="14"/>
-              <text class="pp-n" x="900" y="72">05 SPEAK</text><text class="pp-t" x="900" y="100">Voice or tone</text>
-              <text class="pp-s" x="900" y="124">Natural voice, phone</text><text class="pp-s" x="900" y="142">voice after 0.4 s.</text>
-              <text class="pp-m" x="900" y="182">GEMINI TTS · WEB AUDIO</text></g>
-            <path class="pp-wire" d="M971 200 V 240 M 812 240 H 1110 M 812 240 V 272 M 971 240 V 272 M 1110 240 V 272"/>
-            <rect class="pp-out-s" x="772" y="276" width="80" height="14" rx="7"/><text class="pp-o" x="812" y="312" text-anchor="middle">Silence</text>
-            <rect class="pp-out-v" x="931" y="276" width="80" height="14" rx="7"/><text class="pp-o" x="971" y="312" text-anchor="middle">Words</text>
-            <rect class="pp-out-a" x="1090" y="276" width="40" height="14" rx="7"/><text class="pp-o" x="1110" y="312" text-anchor="middle">Alarm</text>
-            <text class="pp-m" x="24" y="252">ROUND TRIP</text>
-            <text class="pp-s" x="24" y="274">A decision takes about 0.3 to 1 s, mostly network.</text>
-            <text class="pp-s" x="24" y="294">A late answer is dropped rather than spoken late.</text>
-            <text class="pp-m" x="400" y="252">ALONGSIDE</text>
-            <text class="pp-s" x="400" y="274">Every 4 s a slower narrator call</text>
-            <text class="pp-s" x="400" y="294">keeps track of the walk.</text>
-          </svg>
+      <ol class="steps" aria-label="Pipeline"><li class=""><span class="n">01 See</span><b>Two frames</b><p>Now and 0.5 s ago, so it can see what moves.</p><span class="t">Browser camera</span></li><li class=""><span class="n">02 Remember</span><b>Context</b><p>What Echo just said, walking, head tilt.</p><span class="t">Motion sensors</span></li><li class="hl"><span class="n">03 Decide</span><b>Four gates</b><p>Stop, course, footing, orient. Then what and where.</p><span class="t">OpenAI Decisions API</span></li><li class=""><span class="n">04 Route</span><b>Thresholds</b><p>Plain code. Alarms need two frames to agree.</p><span class="t">Vercel function</span></li><li class=""><span class="n">05 Speak</span><b>Voice or tone</b><p>Natural voice, phone voice after 0.4 s.</p><span class="t">Gemini TTS · Web Audio</span><span class="out"><i class="s">Silence</i><i class="w">Words</i><i class="a">Alarm</i></span></li></ol>
+      <div class="why">
+        <div class="why-t">
+          <span class="eyebrow">Why a decision model</span>
+          <p class="why-h">A chat model gives you a sentence. <span>A decision model gives you a number you can tune.</span></p>
+          <p class="dim">Each answer is a probability, so "should Echo speak?" becomes a threshold we test on recorded walks, not a prompt we hope behaves.</p>
+        </div>
+        <div class="why-n">
+          <div><b>0.3 to 1 s</b><span>Per decision, mostly network. Late answers are dropped, not spoken late.</span></div>
+          <div><b>About 1¢</b><span>Per minute of walking for the decisions. <span class="tag">Estimate</span></span></div>
         </div>
       </div>
-
-      </div>
-      <div class="pane" data-tab="Why a decision model">
-      <div class="decision">
-        <div class="txt">
-          <h3 style="font-size:clamp(26px,2.6vw,34px);line-height:1.12;letter-spacing:-0.03em">A chat model gives you a sentence. A decision model gives you a number you can tune.</h3>
-          <p class="dim">Each question comes back as a probability, so "should Echo speak?" becomes a threshold we can test against recorded walks instead of a prompt we hope behaves.</p>
-          <p class="dim">It only charges for input, about a cent per minute of walking. <span class="tag">Estimate</span></p>
-          <div class="stack">
-            <div><span class="k">Decisions</span><span class="v">OpenAI Decisions API</span></div>
-            <div><span class="k">Voice</span><span class="v">Gemini TTS</span></div>
-            <div><span class="k">App and server</span><span class="v">Next.js on Vercel</span></div>
-            <div><span class="k">Alarm</span><span class="v">Web Audio</span></div>
-          </div>
-        </div>
-        <div class="card qcard">
-          <div class="qcard-head"><span>One look · the questions</span><span class="tag">Example values</span></div>
-          <div class="q"><span class="nm">stop</span><span class="bar"><i style="width:6%"></i></span><span class="val">0.06</span><span class="ask">Will they walk into something, be hit or step off an edge in a step or two?</span></div>
-          <div class="q"><span class="nm">course</span><span class="bar"><i style="width:71%"></i></span><span class="val">0.71</span><span class="ask">Should they change direction?</span></div>
-          <div class="q"><span class="nm">footing</span><span class="bar"><i style="width:5%"></i></span><span class="val">0.05</span><span class="ask">Should they change pace or how they step?</span></div>
-          <div class="q"><span class="nm">orient</span><span class="bar"><i style="width:9%"></i></span><span class="val">0.09</span><span class="ask">Is there something that helps them find their way?</span></div>
-          <div class="q"><span class="nm">subject</span><span class="ch">chair</span></div>
-          <div class="q"><span class="nm">direction</span><span class="ch">ahead</span></div>
-          <div class="q"><span class="nm">distance</span><span class="ch">near · about 3.7 m from eye height and tilt</span></div>
-          <div class="q"><span class="nm">room</span><span class="ch">left 0.84 · right 0.29</span></div>
-          <div class="qcard-foot"><span class="dimmer mono" style="font-size:12px">course ≥ 0.55 · near · more room on the left</span><span class="out-pill">"Bear left. Chair ahead."</span></div>
-        </div>
-      </div>
-      </div>
-      <div class="pane" data-tab="Quiet until it matters">
-      <div class="closer">
-        <a class="brand" href="#problem"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
-        <p class="closer-h">Quiet until it matters.</p>
-        <a class="closer-cta" href="/demo">Watch the live demo</a>
-        <p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
-      </div>
-      </div>
-      </div>
+      <p class="limits-line">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
     </div>
   </section>
 
@@ -1122,6 +1056,7 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
   /* Lanes: the same walk, heard four ways. */
   (function () {
     var svg = document.getElementById('lanes'), NS = 'http://www.w3.org/2000/svg';
+    if (!svg) return;
     var X0 = 220, X1 = 1140, T = 30;
     function X(t) { return X0 + (t / T) * (X1 - X0); }
     function el(tag, attrs, text) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; svg.appendChild(e); return e; }
