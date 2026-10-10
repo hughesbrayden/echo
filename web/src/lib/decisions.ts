@@ -4,6 +4,7 @@
 //
 // The questions and thresholds are v0 guesses: tuning them is the main work.
 
+import { toPhrase, type Announcement, type Warning } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
 
 const MODEL = "gpt-6-luna";
@@ -150,31 +151,26 @@ export function stubAnswers(): Answers {
   return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead" };
 }
 
-const SUBJECT_WORDS: Record<Answers["subject"], string> = {
-  obstacle: "Obstacle",
-  person: "Person",
-  stairs: "Stairs",
-  door: "Door",
-  sign: "Sign",
-  vehicle: "Vehicle",
-  other: "Something",
-};
-const DIRECTION_WORDS: Record<Answers["direction"], string> = {
-  left: "on your left",
-  ahead: "ahead",
-  right: "on your right",
+const SUBJECT_OBJECTS: Record<Answers["subject"], string> = {
+  obstacle: "obstacle",
+  person: "person",
+  stairs: "stairs",
+  door: "door",
+  sign: "sign",
+  vehicle: "vehicle",
+  other: "something",
 };
 
-// Routes answers to silence, words, or the alarm. Templates, not an LLM.
-export function toReply(a: Answers, recent: Recent[]): { say: string | null; alarm: boolean } {
-  const phrase = `${SUBJECT_WORDS[a.subject]} ${DIRECTION_WORDS[a.direction]}`;
+// Routes answers to silence, a warning, or an urgent warning (the alarm).
+// Templates, not an LLM.
+export function toAnnouncement(a: Answers, recent: Recent[]): Announcement | null {
+  const warning: Warning = { kind: "warning", object: SUBJECT_OBJECTS[a.subject], direction: a.direction };
   if (a.hazard_close >= THRESHOLDS.alarmHazard && a.urgency >= THRESHOLDS.alarmUrgency) {
-    return { say: `Stop. ${phrase}.`, alarm: true };
+    return { ...warning, urgent: true };
   }
   // Don't repeat the same phrase within 10 s.
+  const phrase = toPhrase(warning);
   const repeat = recent.some((r) => r.text === phrase && r.secondsAgo < 10);
-  if (a.worth_saying >= THRESHOLDS.words && !repeat) {
-    return { say: phrase, alarm: false };
-  }
-  return { say: null, alarm: false };
+  if (a.worth_saying >= THRESHOLDS.words && !repeat) return warning;
+  return null;
 }

@@ -2,17 +2,16 @@
 // Echo should say. This is the thin server hop from docs/ARCHITECTURE.md: it
 // holds the API key so the phone never sees it.
 
+import type { Announcement } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
-import { decide, stubAnswers, toReply, type Answers, type Recent } from "@/lib/decisions";
+import { decide, stubAnswers, toAnnouncement, type Answers, type Recent } from "@/lib/decisions";
 
 // Sit close to OpenAI to cut a network hop.
 export const preferredRegion = "iad1";
 
 export type FrameResponse = {
-  // Words to speak, or null to stay quiet.
-  say: string | null;
-  // True when the reply is an emergency and should sound the alarm first.
-  alarm: boolean;
+  // What to say, or null to stay quiet.
+  announcement: Announcement | null;
   bytes: number;
   // Raw decision answers, for the on-screen debug line and the demo log.
   answers?: Answers;
@@ -66,6 +65,6 @@ export async function POST(request: Request) {
     return Response.json({ error: String(e) }, { status: 502 });
   }
 
-  const body: FrameResponse = { ...toReply(answers, recent), bytes: frame.size, answers };
+  const body: FrameResponse = { announcement: toAnnouncement(answers, recent), bytes: frame.size, answers };
   return Response.json(body);
 }
