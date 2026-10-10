@@ -486,6 +486,43 @@ html.is-deck .film-h { font-size: clamp(30px, 2.8vw, 42px); line-height: 1.1; le
 html.is-deck .film > * { min-width: 0; }
 html.is-deck .film-frame { max-height: calc(100vh - 200px); width: 100%; }
 html.is-deck .trip svg { max-height: calc(100vh - 330px); }
+html.is-deck .echo-grid { grid-template-columns: minmax(300px, 4fr) minmax(0, 7fr); align-items: stretch; }
+.echo-left { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+html.is-deck .echo-left { justify-content: space-between; gap: 16px; }
+html.is-deck .echo-left .film { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+html.is-deck .echo-left .film > div:first-child { gap: 4px !important; }
+html.is-deck .echo-left .film-h { font-size: 16px; line-height: 1.3; letter-spacing: -0.01em; }
+html.is-deck .echo-left .film .dim { font-size: 13px; }
+html.is-deck .echo-left .film-frame { aspect-ratio: 16 / 9; max-height: none; }
+html.is-deck .echo-grid h2 { font-size: clamp(30px, 2.7vw, 42px); }
+html:not(.is-deck) .echo-left .film { margin-top: 0; }
+
+/* One slide per beat; each beat steps through its parts with the same keys */
+.tabs { display: none; }
+.pane + .pane { margin-top: clamp(40px, 6vw, 72px); }
+html.is-deck .tabs { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 16px; border-radius: 999px; background: var(--bg-3); max-width: 100%; }
+html.is-deck .tabs button { display: inline-flex; align-items: baseline; gap: 7px; padding: 6px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-3); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+html.is-deck .tabs button span { font-family: var(--font-mono); font-size: 11px; }
+html.is-deck .tabs button:hover { color: var(--ink); }
+html.is-deck .tabs button.on { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
+html.is-deck .pane { display: none; }
+html.is-deck .pane.on { display: block; animation: paneIn 260ms ease; }
+html.is-deck .pane + .pane { margin-top: 0; }
+@keyframes paneIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+html.is-deck .beat .chapter-head { margin-bottom: 18px; }
+html.is-deck .beat .pane .claim, html.is-deck .beat .pane .market, html.is-deck .beat .pane .pillars, html.is-deck .beat .pane .decision { margin-top: 0; }
+html.is-deck .beat .pane .lanes-head { display: none; }
+html.is-deck .beat .pane .closer { padding: clamp(24px, 5vh, 56px) 0; }
+html.is-deck .echo-right { display: flex; flex-direction: column; min-width: 0; }
+html.is-deck .echo-right .tabs { align-self: flex-start; }
+html.is-deck .echo-right .pane .trip { margin: 0; }
+html.is-deck .decision .txt { gap: 14px; }
+html.is-deck .decision .stack { margin-top: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html.is-deck .decision .stack div { padding: 10px 14px; }
+html.is-deck .decision .stack .v { font-size: 16px; }
+html.is-deck .decision .q { padding: 8px 18px; gap: 2px 16px; }
+html.is-deck .decision .qcard-head { padding: 10px 18px; }
+html.is-deck .decision .qcard-foot { padding: 10px 18px; }
 
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
@@ -511,7 +548,9 @@ html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; 
 html.is-deck .chapters { display: none; }
 html.is-deck .slide { top: 60px; }
 html.is-deck .deck-ch .brand { display: none; }
-html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-height: 760px; max-width: 100%; }
+html.is-deck .echo-left .film { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 18px; }
+html.is-deck .echo-left .film-video { order: -1; height: clamp(240px, calc(100vh - 500px), 440px); width: auto; aspect-ratio: 720 / 1564; border-radius: 22px; }
+html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
 .demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
@@ -613,6 +652,7 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
   <section class="slide " id="echo" data-ch="echo" data-title="Echo">
     <div class="wrap slide-inner">
       <div class="echo-grid">
+      <div class="echo-left">
       <div class="chapter-head solo">
         <div class="head-l">
           <span class="eyebrow"><b>02</b> The solution</span>
@@ -620,7 +660,24 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
           <p class="lede" style="max-width:60ch">Echo is an agentic navigation system built for video glasses. As you walk, it tells you what's in your way and how to get around it, and stays quiet the rest of the time.</p>
         </div>
       </div>
+      <div class="film" id="film">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span class="eyebrow">The recorded walk</span>
+          <h3 class="film-h">One real walk, with every decision Echo made shown on top.</h3>
+          <p class="dim">Recorded with a phone standing in for the glasses.</p>
+        </div>
+        <div class="card film-video">
+          <video controls playsinline preload="metadata" poster="/media/echo-walk-01.jpg" aria-label="Screen recording of Echo running on a phone during a real walk">
+            <source src="/media/echo-walk-01.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      </div>
 
+      <div class="echo-right">
+      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Live view</button><button type="button" role="tab" data-i="1"><span>2</span>From above</button></div>
+      <div class="panes">
+      <div class="pane on" data-tab="Live view">
       <div class="card console" id="console">
         <div class="con-bar">
           <div class="con-title">Live view <span class="pill"><span class="dot"></span>Simulation</span><span class="pill" id="frame">Frame 0000</span><span class="pill">2 frames per call</span></div>
@@ -665,13 +722,7 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         </div>
       </div>
       </div>
-
-    </div>
-  </section>
-
-  <section class="slide " data-ch="echo" data-title="The walk">
-    <div class="wrap slide-inner">
-      <div class="slide-sub"><span class="eyebrow"><b>02</b> The walk, seen from above</span></div>
+      <div class="pane" data-tab="From above">
       <figure class="card trip" aria-label="A walk down an office hallway seen from above. Echo stays quiet most of the way, says Bear left, chair ahead, then Keep right, door on your left, and sounds one alarm when a person steps out.">
         <div class="trip-bar">
           <div class="ear" id="ear" aria-live="off">
@@ -747,27 +798,16 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
           <span><i class="lg-alarm"></i>Alarm</span>
         </figcaption>
       </figure>
-    </div>
-  </section>
-
-  <section class="slide " data-ch="echo" data-title="The recorded walk">
-    <div class="wrap slide-inner">
-      <div class="film" id="film">
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <span class="eyebrow"><b>02</b> The recorded walk</span>
-          <h3 class="film-h">One real walk, with every decision Echo made shown on top.</h3>
-          <p class="dim">Recorded with a phone standing in for the glasses.</p>
-        </div>
-        <div class="card film-video">
-          <video controls playsinline preload="metadata" poster="/media/echo-walk-01.jpg" aria-label="Screen recording of Echo running on a phone during a real walk">
-            <source src="/media/echo-walk-01.mp4" type="video/mp4">
-          </video>
-        </div>
       </div>
+      </div>
+      </div>
+      </div>
+
     </div>
   </section>
 
-  <section class="slide " id="different" data-ch="different" data-title="The market">
+
+  <section class="slide beat" id="different" data-ch="different" data-title="What sets us apart">
     <div class="wrap slide-inner">
       <div class="chapter-head">
         <div class="head-l">
@@ -776,6 +816,9 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         </div>
         <p class="lede">Tools that help blind and low-vision people get around already exist. The ones that work well while you walk cost thousands or mean wearing a clunky rig, and the affordable ones wait to be asked or only beep.</p>
       </div>
+      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>The market</button><button type="button" role="tab" data-i="1"><span>2</span>Our claim</button><button type="button" role="tab" data-i="2"><span>3</span>Four ways</button><button type="button" role="tab" data-i="3"><span>4</span>Built to be trusted</button></div>
+      <div class="panes">
+      <div class="pane on" data-tab="The market">
 
       <div class="market">
         <figure class="card land">
@@ -803,12 +846,8 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         </div>
       </div>
 
-    </div>
-  </section>
-
-  <section class="slide center" data-ch="different" data-title="Our claim">
-    <div class="wrap slide-inner">
-      <div class="slide-sub"><span class="eyebrow"><b>03</b> What sets us apart</span></div>
+      </div>
+      <div class="pane" data-tab="Our claim">
       <div class="claim">
         <div class="claim-h"><span class="eyebrow"><b>Echo</b></span><p>The hard part isn't seeing. <span>It's deciding when to speak.</span></p></div>
         <div class="claim-c"><span class="i">Effective</span><h3>It speaks first, in words, only when it helps.</h3><p class="dim">No asking, no guessing what a beep means. "Bear left. Chair ahead." Then quiet again.</p></div>
@@ -816,23 +855,16 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         <div class="claim-c"><span class="i">Seamless</span><h3>Built into glasses, not a clunky rig.</h3><p class="dim">No harness, no chest-mounted camera, no extra device to hold. It looks and wears like ordinary glasses.</p></div>
       </div>
 
-    </div>
-  </section>
-
-  <section class="slide " data-ch="different" data-title="Four ways">
-    <div class="wrap slide-inner">
+      </div>
+      <div class="pane" data-tab="Four ways">
       <div class="lanes-head"><span class="eyebrow">The same walk, heard four ways</span></div>
       <div class="card lanes">
         <div class="lanes-scroll"><svg id="lanes" viewBox="0 0 1160 470" role="img" aria-label="Four audio lanes over the same thirty-second walk past a chair, a door and a person. A narrator talks constantly. A describer is silent unless asked. An obstacle wearable beeps without words. Echo is silent except for two short phrases and one alarm."></svg></div>
         <div class="lanes-cap"><span>Illustration of each approach over the same route.</span><span class="mono">0 to 30 s</span></div>
       </div>
 
-    </div>
-  </section>
-
-  <section class="slide center" data-ch="different" data-title="Trust">
-    <div class="wrap slide-inner">
-      <div class="slide-sub"><span class="eyebrow"><b>03</b> Built to be trusted</span></div>
+      </div>
+      <div class="pane" data-tab="Built to be trusted">
       <div class="pillars">
         <div><span class="i">Built around silence</span><h3>Success is what it didn't say.</h3><p class="dim">Fewer words, without missing anything that mattered.</p></div>
         <div><span class="i">Measured, not guessed</span><h3>It decides with probabilities.</h3><p class="dim">Thresholds we can test on recorded walks and tune.</p></div>
@@ -841,10 +873,12 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         <div><span class="i">Honest</span><h3>It never says a path is clear.</h3><p class="dim">An early heads-up that works alongside your cane.</p></div>
         <div><span class="i">Hands free</span><h3>Nothing to hold or tap.</h3><p class="dim">It talks, you keep walking. Your hands stay on your cane.</p></div>
       </div>
+      </div>
+      </div>
     </div>
   </section>
 
-  <section class="slide " id="built" data-ch="built" data-title="Pipeline">
+  <section class="slide beat" id="built" data-ch="built" data-title="How we built it">
     <div class="wrap slide-inner">
       <div class="chapter-head">
         <div class="head-l">
@@ -853,6 +887,9 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         </div>
         <p class="lede">The phone sees and speaks. A small server asks a decision model a few navigation questions about each look, and plain code turns the answers into silence, words or the alarm.</p>
       </div>
+      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Pipeline</button><button type="button" role="tab" data-i="1"><span>2</span>Why a decision model</button><button type="button" role="tab" data-i="2"><span>3</span>Quiet until it matters</button></div>
+      <div class="panes">
+      <div class="pane on" data-tab="Pipeline">
 
       <div class="card pipe">
         <div class="pipe-scroll">
@@ -893,17 +930,19 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
         </div>
       </div>
 
-    </div>
-  </section>
-
-  <section class="slide " data-ch="built" data-title="Decision model">
-    <div class="wrap slide-inner">
-      <div class="slide-sub"><span class="eyebrow"><b>04</b> Why a decision model</span></div>
+      </div>
+      <div class="pane" data-tab="Why a decision model">
       <div class="decision">
         <div class="txt">
           <h3 style="font-size:clamp(26px,2.6vw,34px);line-height:1.12;letter-spacing:-0.03em">A chat model gives you a sentence. A decision model gives you a number you can tune.</h3>
           <p class="dim">Each question comes back as a probability, so "should Echo speak?" becomes a threshold we can test against recorded walks instead of a prompt we hope behaves.</p>
           <p class="dim">It only charges for input, about a cent per minute of walking. <span class="tag">Estimate</span></p>
+          <div class="stack">
+            <div><span class="k">Decisions</span><span class="v">OpenAI Decisions API</span></div>
+            <div><span class="k">Voice</span><span class="v">Gemini TTS</span></div>
+            <div><span class="k">App and server</span><span class="v">Next.js on Vercel</span></div>
+            <div><span class="k">Alarm</span><span class="v">Web Audio</span></div>
+          </div>
         </div>
         <div class="card qcard">
           <div class="qcard-head"><span>One look · the questions</span><span class="tag">Example values</span></div>
@@ -918,23 +957,15 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
           <div class="qcard-foot"><span class="dimmer mono" style="font-size:12px">course ≥ 0.55 · near · more room on the left</span><span class="out-pill">"Bear left. Chair ahead."</span></div>
         </div>
       </div>
-
-      <div class="stack">
-        <div><span class="k">Decisions</span><span class="v">OpenAI Decisions API</span></div>
-        <div><span class="k">Voice</span><span class="v">Gemini TTS</span></div>
-        <div><span class="k">App and server</span><span class="v">Next.js on Vercel</span></div>
-        <div><span class="k">Alarm</span><span class="v">Web Audio</span></div>
       </div>
-    </div>
-  </section>
-
-  <section class="slide center" data-ch="close" data-title="Close">
-    <div class="wrap slide-inner">
+      <div class="pane" data-tab="Quiet until it matters">
       <div class="closer">
         <a class="brand" href="#problem"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>
         <p class="closer-h">Quiet until it matters.</p>
         <a class="closer-cta" href="/demo">Watch the live demo</a>
         <p class="limits">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
+      </div>
+      </div>
       </div>
     </div>
   </section>
@@ -944,7 +975,7 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
   <div class="deck-in">
     <div class="deck-ch" id="deck-ch"></div>
     <div class="deck-ctl">
-      <span class="deck-n mono" id="deck-n">1 / 11</span>
+      <span class="deck-n mono" id="deck-n">1 / 4</span>
       <button class="btn" id="deck-prev" type="button" aria-label="Previous slide">Back</button>
       <button class="btn deck-next" id="deck-next" type="button" aria-label="Next slide">Next</button>
     </div>
@@ -1064,7 +1095,7 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
       map.setAttribute('viewBox', panX.toFixed(1) + ' 60 ' + vw + ' 400');
     }
   }
-  function fitMap() { narrow = map.getBoundingClientRect().width < 700; if (!narrow) map.setAttribute('viewBox', '0 0 1200 520'); }
+  function fitMap() { narrow = map.getBoundingClientRect().width < 560; if (!narrow) map.setAttribute('viewBox', '0 0 1200 520'); }
   fitMap();
   document.getElementById('route-ahead').setAttribute('d', routeD(X0, X1));
   var mapT0 = performance.now(), mapVisible = true;
@@ -1462,7 +1493,14 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
   var CH = [['problem', '01', 'Problem'], ['echo', '02', 'Echo'], ['different', '03', 'Different'], ['built', '04', 'Built']];
   chEl.innerHTML = '<a class="brand" href="#problem"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</a>' +
     CH.map(function (c) { return '<button type="button" data-ch="' + c[0] + '"><span>' + c[1] + '</span>' + c[2] + '</button>'; }).join('');
-  var cur = 0, fitting = false;
+  var cur = 0, fitting = false, pane = slides.map(function () { return 0; });
+  function panesOf(i) { return [].slice.call(slides[i].querySelectorAll('.pane')); }
+  function count(i) { return Math.max(1, panesOf(i).length); }
+  function showPane(i) {
+    var k = pane[i];
+    panesOf(i).forEach(function (p, j) { p.classList.toggle('on', j === k); });
+    slides[i].querySelectorAll('.tabs button').forEach(function (b, j) { b.classList.toggle('on', j === k); b.setAttribute('aria-selected', String(j === k)); });
+  }
   function deckOn() { return window.innerWidth >= 900 && window.innerHeight >= 560; }
   function fit(i) {
     var sl = slides[i], inner = sl.querySelector('.slide-inner');
@@ -1473,48 +1511,57 @@ html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-h
     if (z < 1) inner.style.width = (100 / z).toFixed(2) + '%';
   }
   function refreshCanvases() { fitting = true; window.dispatchEvent(new Event('resize')); fitting = false; }
-  function go(i, push) {
+  function go(i, push, k) {
     cur = Math.max(0, Math.min(slides.length - 1, i));
+    if (k != null) pane[cur] = Math.max(0, Math.min(count(cur) - 1, k));
+    showPane(cur);
     slides.forEach(function (s, k) { s.classList.toggle('on', k === cur); s.setAttribute('aria-hidden', k === cur ? 'false' : 'true'); });
     nEl.textContent = (cur + 1) + ' / ' + slides.length;
-    prog.style.width = ((cur + 1) / slides.length * 100) + '%';
+    prog.style.width = ((cur + (pane[cur] + 1) / count(cur)) / slides.length * 100) + '%';
     var ch = slides[cur].getAttribute('data-ch');
     chEl.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ch') === ch); });
-    document.getElementById('deck-prev').disabled = cur === 0;
-    document.getElementById('deck-next').disabled = cur === slides.length - 1;
-    if (push !== false) history.replaceState(null, '', '#s' + (cur + 1));
+    document.getElementById('deck-prev').disabled = cur === 0 && pane[cur] === 0;
+    document.getElementById('deck-next').disabled = cur === slides.length - 1 && pane[cur] === count(cur) - 1;
+    if (push !== false) history.replaceState(null, '', '#s' + (cur + 1) + (count(cur) > 1 ? '.' + (pane[cur] + 1) : ''));
     fit(cur); refreshCanvases();
     requestAnimationFrame(function () { fit(cur); refreshCanvases(); });
   }
   function fromHash() {
     var h = location.hash.slice(1); if (!h) return 0;
-    var m = /^s(\d+)$/.exec(h); if (m) return parseInt(m[1], 10) - 1;
+    var m = /^s(\d+)(?:\.(\d+))?$/.exec(h); if (m) { if (m[2]) pane[parseInt(m[1], 10) - 1] = parseInt(m[2], 10) - 1; return parseInt(m[1], 10) - 1; }
     var t = document.getElementById(h); if (!t) return 0;
-    var sl = t.closest('.slide'); return sl ? slides.indexOf(sl) : 0;
+    var sl = t.closest('.slide'); if (!sl) return 0;
+    var pn = t.closest('.pane'); if (pn) pane[slides.indexOf(sl)] = panesOf(slides.indexOf(sl)).indexOf(pn);
+    return slides.indexOf(sl);
   }
+  function next() { if (pane[cur] < count(cur) - 1) go(cur, true, pane[cur] + 1); else if (cur < slides.length - 1) go(cur + 1, true, 0); }
+  function prev() { if (pane[cur] > 0) go(cur, true, pane[cur] - 1); else if (cur > 0) go(cur - 1, true, count(cur - 1) - 1); }
   function setMode() {
     var on = deckOn();
     if (on === root.classList.contains('is-deck')) { if (on && !fitting) fit(cur); return; }
     root.classList.toggle('is-deck', on);
     if (on) go(fromHash(), false);
-    else slides.forEach(function (s) { s.classList.remove('on'); s.removeAttribute('aria-hidden'); var n = s.querySelector('.slide-inner'); n.style.zoom = ''; n.style.width = ''; });
+    else slides.forEach(function (s) { s.querySelectorAll('.pane').forEach(function (p) { p.classList.add('on'); }); s.classList.remove('on'); s.removeAttribute('aria-hidden'); var n = s.querySelector('.slide-inner'); n.style.zoom = ''; n.style.width = ''; });
     refreshCanvases();
   }
-  document.getElementById('deck-prev').addEventListener('click', function () { go(cur - 1); });
-  document.getElementById('deck-next').addEventListener('click', function () { go(cur + 1); });
+  document.getElementById('deck-prev').addEventListener('click', prev);
+  document.getElementById('deck-next').addEventListener('click', next);
+  slides.forEach(function (sl, i) {
+    sl.querySelectorAll('.tabs button').forEach(function (b, j) { b.addEventListener('click', function () { go(i, true, j); }); });
+  });
   chEl.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
-    var ch = b.getAttribute('data-ch'); for (var k = 0; k < slides.length; k++) if (slides[k].getAttribute('data-ch') === ch) { go(k); break; }
+    var ch = b.getAttribute('data-ch'); for (var k = 0; k < slides.length; k++) if (slides[k].getAttribute('data-ch') === ch) { go(k, true, 0); break; }
   });
   document.addEventListener('keydown', function (e) {
     if (!root.classList.contains('is-deck') || e.metaKey || e.ctrlKey || e.altKey) return;
     var tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea') return;
     var k = e.key;
-    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && tag !== 'button')) { e.preventDefault(); go(cur + 1); }
-    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); go(cur - 1); }
-    else if (k === 'Home') { e.preventDefault(); go(0); }
-    else if (k === 'End') { e.preventDefault(); go(slides.length - 1); }
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && tag !== 'button')) { e.preventDefault(); next(); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); prev(); }
+    else if (k === 'Home') { e.preventDefault(); go(0, true, 0); }
+    else if (k === 'End') { e.preventDefault(); go(slides.length - 1, true, count(slides.length - 1) - 1); }
   });
   window.addEventListener('hashchange', function () { if (root.classList.contains('is-deck')) go(fromHash(), false); });
   window.addEventListener('resize', function () { if (!fitting) setMode(); });
