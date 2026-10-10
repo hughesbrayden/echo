@@ -576,6 +576,39 @@ html.is-deck .beat .chapter-head { margin-bottom: 20px; }
 .steps .n::before { display: none !important; }
 .mk.n { background: #E9ECF1; }
 
+/* 03: other solutions -> Echo */
+.vs { display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr); align-items: stretch; }
+.vs-box { display: flex; flex-direction: column; gap: 14px; padding: clamp(20px, 2.4vw, 32px); border-radius: 20px; min-width: 0; }
+.vs-box ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.vs-k { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+.vs-h { font-size: clamp(20px, 1.8vw, 26px); line-height: 1.2; letter-spacing: -0.025em; font-weight: 500; }
+.vs-old { background: var(--bg-2); border: 1px solid var(--line); color: var(--ink-2); }
+.vs-old .vs-k { color: var(--ink-3); }
+.vs-old .vs-h { color: var(--ink-2); }
+.vs-old li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); }
+.vs-who { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vs-who b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.vs-who span { font-size: 12px; color: var(--ink-3); }
+.vs-old li p { font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+.vs-miss { justify-self: start; margin-top: 2px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--alarm); padding: 2px 8px; border-radius: 999px; background: var(--alarm-soft); }
+.vs-arrow { display: flex; align-items: center; justify-content: center; color: var(--voice); }
+.vs-arrow svg { width: 32px; height: 32px; }
+.vs-echo { background: var(--voice); color: #FFFFFF; box-shadow: 0 24px 48px -20px rgba(47, 91, 234, 0.55), 0 2px 6px rgba(16, 24, 40, 0.08); }
+.vs-echo .vs-k { color: rgba(255, 255, 255, 0.85); font-size: 13px; }
+.vs-echo .vs-k .mark i { background: #FFFFFF !important; }
+.vs-echo .vs-h { font-size: clamp(30px, 2.8vw, 42px); letter-spacing: -0.035em; color: #FFFFFF; }
+.vs-echo li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.22); }
+.vs-echo li b { display: block; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 2px; }
+.vs-echo li p { font-size: 15px; line-height: 1.45; color: rgba(255, 255, 255, 0.88); }
+.vs-echo .mk.y { background: #FFFFFF; width: 22px; height: 22px; }
+.vs-echo .mk.y::after { left: 8px; top: 4px; width: 5px; height: 10px; border-color: var(--voice); }
+.vs-echo .tag { color: #FFFFFF; border-color: rgba(255, 255, 255, 0.5); background: transparent; }
+@media (max-width: 860px) { .vs { grid-template-columns: minmax(0, 1fr); gap: 8px; } .vs-arrow { transform: rotate(90deg); height: 40px; } }
+html.is-deck .vs-box { gap: 10px; padding: clamp(18px, 2vw, 28px); }
+html.is-deck .vs-old li { padding: 9px 0; gap: 2px; }
+html.is-deck .vs-echo li { padding: 11px 0; }
+html.is-deck #different .chapter-head { margin-bottom: 16px; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -868,14 +901,20 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
         </div>
         <p class="hook">The hard part isn't seeing. <span>It's deciding when to speak.</span></p>
       </div>
-      <div class="card cmp" role="table" aria-label="How Echo compares with the tools available today">
-        <div class="cmp-r cmp-h" role="row"><div>Where the market is today</div><div><b>Effective</b>Warns you while you walk</div><div><b>Affordable</b>What it costs the wearer</div><div><b>Seamless</b>What you have to wear or hold</div></div>
-<div class="cmp-r"><div class="cmp-who"><b>Describer apps</b><span>Be My AI · Meta AI · ChatGPT live video</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Only when you stop and ask</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Low cost</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Phone in hand, or glasses</span></div></div>
-<div class="cmp-r"><div class="cmp-who"><b>Obstacle wearables</b><span>Such as Biped</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Warns, but only with beeps</span></div><div class="cmp-c"><i class="mk p" aria-label="Partly"></i><span>Mid-range</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Chest-mounted rig</span></div></div>
-<div class="cmp-r"><div class="cmp-who"><b>Dedicated devices</b><span>Specialist camera wearables</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Capable while you walk</span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Thousands of dollars <span class="tag">Price check pending</span></span></div><div class="cmp-c"><i class="mk n" aria-label="No"></i><span>Extra hardware to wear</span></div></div>
-<div class="cmp-r echo"><div class="cmp-who"><b><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</b><span>On everyday video glasses</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Speaks first, in words, only when it helps</span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>About a cent a minute <span class="tag">Estimate</span></span></div><div class="cmp-c"><i class="mk y" aria-label="Yes"></i><span>Built into glasses, nothing to hold</span></div></div>
+      <div class="vs">
+        <div class="vs-box vs-old">
+          <span class="vs-k">Other solutions today</span>
+          <p class="vs-h">You pick one: effective, affordable or easy to wear.</p>
+          <ul><li><div class="vs-who"><b>Describer apps</b><span>Be My AI · Meta AI · ChatGPT live video</span></div><p>Affordable, but you have to stop and ask.</p><span class="vs-miss">Not effective while walking</span></li><li><div class="vs-who"><b>Obstacle wearables</b><span>Such as Biped</span></div><p>They warn you, but only with beeps, from a chest-mounted rig.</p><span class="vs-miss">Not seamless</span></li><li><div class="vs-who"><b>Dedicated devices</b><span>Specialist camera wearables</span></div><p>Capable, but they cost thousands of dollars. <span class="tag">Price check pending</span></p><span class="vs-miss">Not affordable</span></li></ul>
+        </div>
+        <div class="vs-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="vs-box vs-echo">
+          <span class="vs-k"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</span>
+          <p class="vs-h">All three, at once.</p>
+          <ul><li><i class="mk y" aria-hidden="true"></i><div><b>Effective</b><p>Speaks first, in words, only when it helps. "Bear left. Chair ahead."</p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Affordable</b><p>Runs on everyday video glasses for about a cent a minute. <span class="tag">Estimate</span></p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Seamless</b><p>Built into glasses. No rig, nothing to hold.</p></div></li></ul>
+        </div>
       </div>
-      <p class="cmp-note">Our reading of each category, not a measurement. <span class="tag">Prices to check</span></p>
+      <p class="cmp-note">Our reading of each category, not a measurement.</p>
     </div>
   </section>
 
