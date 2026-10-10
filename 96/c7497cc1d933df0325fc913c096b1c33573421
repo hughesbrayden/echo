@@ -1,0 +1,29 @@
+web/src/app/api/speak/route.ts
+  s_b87fa4f29fcc9c::t_f0818a2d8a2e96 3-7,12-18,26-30,32-33,40-45,49,52-60,82,89-92,102-105,108-118
+web/src/components/Camera.tsx
+  s_b87fa4f29fcc9c::t_144f21eadc4dad 9,11,66-67,172-179,198-199
+web/src/lib/announce.ts
+  s_b87fa4f29fcc9c::t_26669907cb4305 41-44,47-48
+web/src/lib/speech.ts
+  s_b87fa4f29fcc9c::t_ab3895d73a289c 15-17,146-152,158-167,170-171,173-174,176-181
+  s_b87fa4f29fcc9c::t_26669907cb4305 153-156,168-169,172,175
+web/src/lib/decisions.ts
+  s_b87fa4f29fcc9c::t_144f21eadc4dad 13
+  s_b87fa4f29fcc9c::t_b7abb80ef35b93 529-562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96c7497cc1d933df0325fc913c096b1c33573421",
+  "prompts": {},
+  "sessions": {
+    "s_b87fa4f29fcc9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e4f670c-92b8-42e1-b9c9-236f427e50ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sethian Kho <gabriel.d.kho@gmail.com>"
+    }
+  }
+}
