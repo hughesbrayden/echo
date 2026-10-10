@@ -36,7 +36,8 @@ export default function Camera() {
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number }[]>([]);
+  const saidRef = useRef<{ text: string; at: number; urgent: boolean }[]>([]);
+  const historyRef = useRef<{ hazard_close: number; urgency: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +132,19 @@ export default function Camera() {
     saidRef.current = saidRef.current.filter((s) => now - s.at < 15000);
     form.append(
       "recent",
-      JSON.stringify(saidRef.current.map((s) => ({ text: s.text, secondsAgo: (now - s.at) / 1000 }))),
+      JSON.stringify(
+        saidRef.current.map((s) => ({ text: s.text, secondsAgo: (now - s.at) / 1000, urgent: s.urgent })),
+      ),
+    );
+    form.append(
+      "history",
+      JSON.stringify(
+        historyRef.current.map((h) => ({
+          hazard_close: h.hazard_close,
+          urgency: h.urgency,
+          secondsAgo: (now - h.at) / 1000,
+        })),
+      ),
     );
 
     inFlightRef.current = true;
@@ -143,8 +156,16 @@ export default function Camera() {
       setLatencyMs(Math.round(performance.now() - startedAt));
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
+      if (data.answers) {
+        const { hazard_close, urgency } = data.answers;
+        historyRef.current = [...historyRef.current, { hazard_close, urgency, at: now }].slice(-2);
+      }
       if (data.announcement) {
-        saidRef.current.push({ text: toPhrase(data.announcement), at: Date.now() });
+        saidRef.current.push({
+          text: toPhrase(data.announcement),
+          at: Date.now(),
+          urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
+        });
         setAnnouncement(data.announcement);
       }
     } catch (e) {
