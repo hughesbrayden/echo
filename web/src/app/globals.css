@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0f1115;
+  --foreground: #f7f5f2;
+  /* A calm accent plus three gentle tones for how much something matters. */
+  --echo-accent: #8ab4ff;
+  --echo-calm: #6ee7b7;
+  --echo-caution: #fcd34d;
+  --echo-stop: #fb7185;
 }
 
 @theme inline {
@@ -12,15 +17,82 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Soft frosted card over the camera. */
+.echo-glass {
+  background: rgb(20 22 28 / 0.62);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+}
+
+/* What Echo just said. */
+.echo-caption {
+  border-radius: 1.75rem;
+  padding: 1rem 1.25rem 1.1rem;
+  background: rgb(20 22 28 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: echo-rise 0.3s ease-out;
+}
+.echo-caption-info { color: var(--echo-accent); }
+.echo-caption-calm { color: var(--echo-calm); }
+.echo-caption-caution {
+  color: var(--echo-caution);
+  background: linear-gradient(160deg, rgb(252 211 77 / 0.2), rgb(20 22 28 / 0.75) 65%);
+}
+.echo-caption-stop {
+  color: var(--echo-stop);
+  background: linear-gradient(160deg, rgb(251 113 133 / 0.32), rgb(20 22 28 / 0.78) 70%);
+}
+.echo-caption-dot { background: currentColor; }
+@keyframes echo-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Gentle glow around the thing Echo is watching. */
+.echo-halo {
+  opacity: 0.28;
+  filter: blur(14px);
+  animation: echo-halo 2.4s ease-in-out infinite;
+}
+@keyframes echo-halo {
+  50% { opacity: 0.45; transform: scale(1.08); }
+}
+
+/* Edge glow when Echo says "Stop". */
+.echo-stop-glow {
+  box-shadow: inset 0 0 140px 20px rgb(251 113 133 / 0.7);
+  animation: echo-fade 1.6s ease-out forwards;
+}
+@keyframes echo-fade {
+  0%, 25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.echo-breathe { animation: echo-breathe 2.4s ease-in-out infinite; }
+@keyframes echo-breathe {
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Sound ripples on the start screen. */
+.echo-ripple {
+  border: 2px solid rgb(138 180 255 / 0.5);
+  animation: echo-ripple 3.6s ease-out infinite;
+}
+@keyframes echo-ripple {
+  from { transform: scale(0.45); opacity: 0.9; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .echo-caption, .echo-halo, .echo-stop-glow, .echo-breathe, .echo-ripple { animation: none; }
 }

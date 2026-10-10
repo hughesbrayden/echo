@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
+import { AroundYou, Details, EchoMark, FocusHalo, StopGlow, TopBar } from "@/components/Hud";
 import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
@@ -14,11 +15,11 @@ import { DEFAULT_EYE_HEIGHT_M, cameraSetup, type CameraSetup } from "@/lib/geome
 // Sample announcements for the test buttons.
 const TESTS: { label: string; announcement: Announcement }[] = [
   {
-    label: "Warning",
+    label: "Heads up",
     announcement: { kind: "warning", advice: "course", object: "chair", direction: "ahead", distance: "near", guidance: "left" },
   },
   {
-    label: "Alarm",
+    label: "Stop",
     announcement: { kind: "warning", advice: "stop", object: "person", direction: "ahead", urgent: true, guidance: "right" },
   },
   {
@@ -81,6 +82,10 @@ export default function Camera() {
   const [sent, setSent] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  // Bumped on every urgent warning so the red flash replays.
+  const [alarms, setAlarms] = useState(0);
+  // The numbers behind each decision, for the team.
+  const [showDetails, setShowDetails] = useState(false);
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
   const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
@@ -105,6 +110,11 @@ export default function Camera() {
   }
 
   useEffect(() => stop, []);
+
+  function announce(a: Announcement) {
+    setAnnouncement(a);
+    if (a.kind === "warning" && a.urgent) setAlarms((n) => n + 1);
+  }
 
   async function start() {
     setError(null);
@@ -193,6 +203,10 @@ export default function Camera() {
     snapshotTimerRef.current = null;
     snapshotsRef.current = [];
     setNarration(null);
+    setAnswers(null);
+    setMotion(null);
+    setSent(0);
+    setLatencyMs(null);
     setStatus("idle");
   }
 
@@ -345,7 +359,7 @@ export default function Camera() {
         // Count repeat mentions of the same thing; a new thing starts over.
         const mentions = data.sameObject && reference ? reference.mentions + 1 : 1;
         referenceRef.current = { blob, text, at: Date.now(), mentions };
-        setAnnouncement(data.announcement);
+        announce(data.announcement);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -384,8 +398,29 @@ export default function Camera() {
 
   const running = status === "running";
 
+  const voicePct = voiceProgress ? Math.round((voiceProgress.loaded / Math.max(1, voiceProgress.total)) * 100) : 0;
+
+  const samples = (
+    <div className="flex items-center gap-2">
+      {TESTS.map((t) => (
+        <button
+          key={t.label}
+          type="button"
+          onClick={() => {
+            unlockAudio();
+            announce({ ...t.announcement });
+          }}
+          aria-label={`Play a sample: ${t.label}`}
+          className="h-11 flex-1 rounded-full bg-white/8 text-sm font-medium text-white/85 transition active:scale-95 active:bg-white/15"
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <main className="relative flex min-h-dvh flex-1 flex-col">
+    <main className="relative flex h-dvh flex-1 flex-col overflow-hidden bg-[var(--background)] select-none">
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -395,100 +430,108 @@ export default function Camera() {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      <div
-        className="relative mt-auto flex flex-col gap-3 bg-black/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      >
-        {running && (
-          <p className="font-mono text-sm">
-            sent {sent} · {latencyMs ?? "–"} ms
-          </p>
-        )}
-        {running && motion && (
-          <p className="font-mono text-sm">
-            {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
-            {motion.yawRate}°/s · accel {motion.accelRms} · pitch {motion.pitch}° · head {motion.headOffset}° ·{" "}
-            {motion.cadence} steps/s
-          </p>
-        )}
-        {running && answers?.stub && (
-          <p className="rounded bg-red-600 px-2 py-1 text-sm font-bold text-white">
-            FAKE ANSWERS: OPENAI_API_KEY isn&apos;t set for this deployment.
-          </p>
-        )}
-        {running && answers && (
-          <p className="font-mono text-sm">
-            stop {answers.stop.toFixed(2)} · course {answers.course.toFixed(2)} · footing{" "}
-            {answers.footing.toFixed(2)} · orient {answers.orient.toFixed(2)} · {answers.subject}{" "}
-            {answers.direction} · dist {answers.distance.toFixed(1)}
-            {answers.meters !== null && ` · ${answers.meters} m`}
-            {answers.new_in_view !== null && ` · new ${answers.new_in_view.toFixed(2)}`} · api{" "}
-            {answers.latencyMs} ms
-            {answers.stub && " · stub"}
-          </p>
-        )}
-        {running && !motionAllowed && (
-          <p className="text-sm text-yellow-300">Motion sensor unavailable or not allowed.</p>
-        )}
-        {voiceNote && <p className="text-sm text-yellow-300">{voiceNote}</p>}
-        {running && narration && (
-          <p className="text-sm opacity-80">
-            {narration.narration.summary}{" "}
-            <span className="font-mono text-xs opacity-70">
-              (ground {narration.narration.ground} · {narration.latencyMs} ms)
-            </span>
-          </p>
-        )}
-        <Announcer announcement={announcement} className="text-lg" />
-        {error && <p className="text-sm text-red-400">{error}</p>}
+      {/* Soften the edges so the words read on any scene. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+      {alarms > 0 && <StopGlow key={alarms} />}
 
-        <div className="grid grid-cols-3 gap-2">
-          {TESTS.map((t) => (
-            <button
-              key={t.label}
-              type="button"
-              onClick={() => {
-                unlockAudio();
-                setAnnouncement({ ...t.announcement });
-              }}
-              className="h-12 rounded-2xl border border-white/60 text-base"
+      {/* Three bands that never overlap: header, open view, footer. */}
+      <header className="relative z-10 flex flex-col gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <TopBar live={running} motion={motion} demo={!!answers?.stub} />
+        {running && showDetails && (
+          <div className="max-h-[55dvh] overflow-y-auto rounded-3xl">
+            <Details
+              answers={answers}
+              motion={motion}
+              motionAllowed={motionAllowed}
+              sent={sent}
+              latencyMs={latencyMs}
+              note={voiceNote}
             >
-              Test {t.label.toLowerCase()}
+              {samples}
+            </Details>
+          </div>
+        )}
+      </header>
+
+      <section className="relative min-h-0 flex-1" aria-hidden={running}>
+        {running && <FocusHalo answers={answers} />}
+        {!running && (
+          <div className="flex h-full flex-col items-center justify-center overflow-hidden px-8 text-center">
+            <div className="relative flex h-32 w-32 shrink-0 items-center justify-center [@media(max-height:700px)]:h-24 [@media(max-height:700px)]:w-24">
+              <span className="echo-ripple absolute inset-0 rounded-full" />
+              <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:1.2s]" />
+              <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:2.4s]" />
+              <span className="flex h-[62%] w-[62%] items-center justify-center rounded-full bg-[var(--echo-accent)]/15">
+                <EchoMark className="h-1/2 w-1/2 text-[var(--echo-accent)]" />
+              </span>
+            </div>
+            <h1 className="mt-7 text-3xl font-semibold [@media(max-height:700px)]:mt-5 [@media(max-height:700px)]:text-2xl">A calm voice for the way ahead</h1>
+            <p className="mt-3 max-w-xs text-lg leading-relaxed text-white/65 [@media(max-height:700px)]:text-base">
+              Echo stays quiet while you walk, and speaks up only when something is in your way.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <footer className="relative z-10 flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {running && !showDetails && <AroundYou narration={narration} />}
+        <Announcer announcement={announcement} />
+        {error && <p className="rounded-2xl bg-[var(--echo-stop)]/15 px-4 py-3 text-sm text-white/90">{error}</p>}
+
+        <div className="echo-glass flex flex-col gap-3 rounded-[2rem] p-3">
+          {(status === "idle" || status === "error") && (
+            <label className="flex items-center justify-between px-2 text-base text-white/85">
+              Eye height
+              <span className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={100}
+                  max={220}
+                  value={eyeHeightCm}
+                  onChange={(e) => changeEyeHeight(Number(e.target.value))}
+                  className="w-20 rounded-xl bg-white/10 px-3 py-2 text-right text-base tabular-nums outline-none focus:ring-2 focus:ring-[var(--echo-accent)]"
+                  aria-label="Eye height in centimetres"
+                />
+                <span className="text-sm text-white/55">cm</span>
+              </span>
+            </label>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={running ? stop : start}
+              disabled={status === "starting"}
+              className={`relative h-14 flex-1 overflow-hidden rounded-full text-lg font-semibold transition active:scale-[0.98] disabled:opacity-90 ${
+                running ? "bg-white/12 text-white" : "bg-[var(--echo-accent)] text-neutral-900"
+              }`}
+            >
+              {status === "starting" && voiceProgress && (
+                <span
+                  className="absolute inset-y-0 left-0 bg-white/30 transition-[width] duration-200"
+                  style={{ width: `${voicePct}%` }}
+                />
+              )}
+              <span className="relative">
+                {running ? "Stop Echo" : status === "starting" ? "Getting ready…" : "Start Echo"}
+              </span>
             </button>
-          ))}
+            {running && (
+              <button
+                type="button"
+                onClick={() => setShowDetails((v) => !v)}
+                aria-pressed={showDetails}
+                className={`h-14 rounded-full px-5 text-sm font-medium transition active:scale-95 ${
+                  showDetails ? "bg-white text-neutral-900" : "bg-white/12 text-white/80"
+                }`}
+              >
+                Details
+              </button>
+            )}
+          </div>
         </div>
-        {status === "idle" || status === "error" ? (
-          <label className="flex items-center justify-between text-base">
-            Eye height
-            <span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={100}
-                max={220}
-                value={eyeHeightCm}
-                onChange={(e) => changeEyeHeight(Number(e.target.value))}
-                className="w-20 rounded-lg bg-white/10 px-2 py-1 text-right"
-                aria-label="Eye height in centimetres"
-              />{" "}
-              cm
-            </span>
-          </label>
-        ) : null}
-        <button
-          type="button"
-          onClick={running ? stop : start}
-          disabled={status === "starting"}
-          className="h-20 w-full rounded-2xl bg-white text-2xl font-semibold text-black disabled:opacity-50"
-        >
-          {running
-            ? "Stop"
-            : status === "starting"
-              ? voiceProgress
-                ? `Loading voice ${voiceProgress.loaded}/${voiceProgress.total}…`
-                : "Starting…"
-              : "Start Echo"}
-        </button>
-      </div>
+      </footer>
     </main>
   );
 }

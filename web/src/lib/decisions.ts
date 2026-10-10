@@ -128,20 +128,20 @@ export const THRESHOLDS = {
   wordsBarRaise: 0.1,
   wordsBarEaseS: 8,
   // Words wait this long after Echo last spoke, so it never talks over itself.
-  wordsGapS: 3,
+  wordsGapS: 4,
   // The alarm needs this many of the last 3 frames (this one included) over
   // the line, so one noisy frame can't set it off.
   alarmConfirmFrames: 2,
   // Frames older than this don't count toward confirming.
   alarmConfirmWindowS: 2.5,
   // Any two alarms are at least this far apart.
-  alarmGapS: 4,
+  alarmGapS: 8,
   // Below this, the main thing is the one Echo already spoke about.
   notNew: 0.3,
   // A stop or distance score that rises this much over the last few frames
   // means it is getting closer, so the alarm sounds again even for something
   // already mentioned.
-  approachRise: 0.15,
+  approachRise: 0.25,
   approachDistanceRise: 0.5,
   // Distance score cut-offs for the spoken words.
   distanceClose: 1.5,
@@ -427,8 +427,8 @@ export function stubAnswers(hasReference: boolean): Answers {
   const new_in_view = hasReference ? (Math.random() < 0.7 ? 0.1 : 0.9) : null;
   const quiet = { stop: 0.02, course: 0.1, footing: 0.05, orient: 0.1 };
   const base = { new_in_view, room_left: 0.8, room_right: 0.3, base_row: 3, meters: null, latencyMs: 0, stub: true };
-  if (roll < 0.05) return { ...base, ...quiet, stop: 0.92, course: 0.9, subject: "person", direction: "ahead", distance: 1.9 };
-  if (roll < 0.15) return { ...base, ...quiet, course: 0.85, subject: "chair", direction: "ahead", distance: 1.1 };
+  if (roll < 0.01) return { ...base, ...quiet, stop: 0.92, course: 0.9, subject: "person", direction: "ahead", distance: 1.9 };
+  if (roll < 0.05) return { ...base, ...quiet, course: 0.85, subject: "chair", direction: "ahead", distance: 1.1 };
   if (roll < 0.2) return { ...base, ...quiet, footing: 0.9, subject: "curb", direction: "ahead", distance: 1.0 };
   if (roll < 0.25) return { ...base, ...quiet, orient: 0.92, subject: "door", direction: "right", distance: 1.0 };
   return { ...base, ...quiet, subject: "other", direction: "ahead", distance: 0.2 };
@@ -610,10 +610,30 @@ export function toAnnouncement(
     return reference.secondsAgo >= wait;
   };
 
+  const stopConfirmed =
+    a.stop >= THRESHOLDS.stop &&
+    1 + window.filter((h) => h.stop >= THRESHOLDS.stop).length >= THRESHOLDS.alarmConfirmFrames;
+
+  // Only things that move get the alarm tone: a person, bike or vehicle can
+  // step into the path faster than words. Something that stays put gets firm
+  // words instead, and only when the wearer is walking into it.
+  if (a.stop >= THRESHOLDS.stop && !MOVES.has(a.subject)) {
+    if (!stopConfirmed || !motion?.walking || a.direction !== "ahead" || lookingAway) return null;
+    if (lastSpokeS < THRESHOLDS.wordsGapS) return null;
+    const close: Warning = {
+      kind: "warning",
+      advice: "course",
+      object: a.subject === "other" ? "obstacle" : object,
+      direction: a.direction,
+      distance: "close",
+      guidance: toGuidance(a, "close", false, lookingAway),
+    };
+    const key = announcementKey(close);
+    return recent.some((r) => r.key === key && r.secondsAgo < THRESHOLDS.samePhraseS) ? null : close;
+  }
+
   if (a.stop >= THRESHOLDS.stop) {
-    const confirmed =
-      1 + window.filter((h) => h.stop >= THRESHOLDS.stop).length >= THRESHOLDS.alarmConfirmFrames;
-    if (!confirmed || lastAlarmS < THRESHOLDS.alarmGapS) return null;
+    if (!stopConfirmed || lastAlarmS < THRESHOLDS.alarmGapS) return null;
 
     const alarm: Warning = {
       kind: "warning",
