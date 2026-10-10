@@ -62,6 +62,9 @@ html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; 
 html.is-deck .chapters { display: none; }
 html.is-deck .slide { top: 60px; }
 html.is-deck .deck-ch .brand { display: none; }
+html.is-deck .echo-left .film { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 18px; }
+html.is-deck .echo-left .film-video { order: -1; height: clamp(240px, calc(100vh - 500px), 440px); width: auto; aspect-ratio: 720 / 1564; border-radius: 22px; }
+html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
 .demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
