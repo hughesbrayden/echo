@@ -37,19 +37,19 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 | `distance` | score | far, near, close. Replaced by metres when the camera tilt is known. |
 | `base_row` | score | Where that thing meets the ground in the frame; with eye height and tilt this gives metres. |
 | `room_left`, `room_right` | predicate | Is there walkable ground to get past what's in the way on that side? |
-| `new_in_view` | predicate | Is the thing that matters most new since the frame from when Echo last spoke, or clearly closer? Asked only when that frame is sent. |
+| `new_in_view` | predicate | Is the thing that matters most new since the frame from when Echo last spoke? Only asked if that frame is sent, which it currently isn't, to keep calls to two images. |
 
-**Context**, in order: who is wearing the camera and how they are moving (walking pace, looking away from the path, camera height and tilt, in plain rounded words), the frame from when Echo last spoke if any, the frame from half a second ago, the newest frame, what Echo said in the last 15 s labelled by gate, then the narrator's note as background that may be out of date.
+**Context**, kept lean for speed: one line on how the wearer is moving (walking or standing, looking away from the path, camera tilt), the frame from half a second ago, the newest frame, then what Echo said in the last 10 s (up to 3 lines, labelled by gate). The narrator's note is not sent to the decision model; only its up or down call on the ground is used.
 
-**Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise footing wins for height changes, course for things in the way, and orient only above a higher bar. Right after Echo speaks the bar is raised and eases back over 15 s, and words need the previous frame to agree unless the thing is close. On calm stretches, "Keep walking." now and then.
+**Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise footing wins for height changes, course for things in the way, and orient only above a higher bar. Right after Echo speaks the bar is raised and eases back over 15 s, and words need the previous frame to agree unless the thing is close.
 
-**Spoken lines lead with the action:** "Stop. Person in front. Step left." / "Bear left. Chair ahead." / "Slow down. Curb ahead." / "Door on your right." / "Keep walking."
+**Spoken lines lead with the action:** "Stop. Person in front. Step left." / "Bear left. Chair ahead." / "Slow down. Curb ahead." / "Door on your right."
 
 ## The background narrator
 
 The decision model is fast but remembers nothing. Beside it, every 4 s the phone sends a short run of frames (about 1.5 s apart), what Echo said, and a motion log (camera pitch, head direction, walking, turning) to a slower reasoning call: `gpt-6-luna` on the Responses API with low reasoning effort, about 3 to 10 s per call. It returns a short ambient note (the kind of place, what the wearer is doing, what Echo already told them; no positions or distances) and whether the ground goes up or down. It never speaks on its own. Code: [`web/src/lib/narrator.ts`](../web/src/lib/narrator.ts), `POST /api/narrate`.
 
-- The note rides along with every frame, after the image, labelled as background that may be out of date. Notes older than 10 s are dropped.
+- The note is kept off the per-frame call for now to keep it fast; only the up or down call reaches the warnings.
 - Up or down is only added to ground warnings ("Stairs going down, just ahead.") when the last two narrations agree; one frame got it wrong in tests.
 - If it fails or is slow, the frame loop carries on without it.
 
@@ -116,7 +116,7 @@ The phone posts each frame to `POST /api/frame` (multipart) and the server repli
 ```
 in:  frame (JPEG), motion (JSON: walking, turning, yaw, pitch, headOffset, cadence), camera (JSON: eyeHeightM, vfovDeg, stepLengthM), narration (JSON: summary, secondsAgo, groundDirection), recent (JSON: [{ text, secondsAgo, urgent, advice, guided, key }]),
      history (JSON: last 2 frames' stop, distance, gate), previous (JPEG from half a second ago) + previousInfo (JSON: secondsAgo), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
-out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | { kind: "clear" } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, base_row, meters, room_left, room_right, latencyMs, stub } }
+out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, base_row, meters, room_left, room_right, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.

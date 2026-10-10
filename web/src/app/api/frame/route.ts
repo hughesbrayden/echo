@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     if (!apiKey || process.env.ECHO_STUB === "1") {
       answers = stubAnswers(reference !== null);
     } else {
-      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous, narration, camera);
+      answers = await decide(await toDataUrl(frame), recent, motion, apiKey, reference, previous, camera);
     }
   } catch (e) {
     // The phone skips this frame rather than speaking late.

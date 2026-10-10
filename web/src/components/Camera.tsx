@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
-import { KEEP_WALKING, commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
+import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -35,8 +35,6 @@ const TESTS: { label: string; announcement: Announcement }[] = [
 const FRAME_INTERVAL_MS = 500;
 const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
-// Echo forgets what it last spoke about after this long.
-const REFERENCE_MAX_AGE_MS = 90_000;
 // A frame from this long before the newest one goes along too, so the model
 // sees motion over the same gap every time, whatever the API latency. Frames
 // are kept every SNAPSHOT_MS to pick from.
@@ -120,7 +118,7 @@ export default function Camera() {
     // Every alarm phrase and command must be ready before Echo starts
     // watching, so a warning never waits on the network. Loads while the
     // camera starts.
-    const phrases = [KEEP_WALKING, ...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
+    const phrases = [...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
     setVoiceProgress({ loaded: 0, total: phrases.length });
     const voiceReady = preload(phrases, {
       pin: true,
@@ -317,18 +315,9 @@ export default function Camera() {
       form.append("previousInfo", JSON.stringify({ secondsAgo: (now - previous.at) / 1000 }));
     }
 
+    // The frame from when Echo last spoke isn't sent: two images per call
+    // keeps latency down, and repeats are caught by phrase instead.
     const reference = referenceRef.current;
-    if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {
-      form.append("reference", reference.blob, "reference.jpg");
-      form.append(
-        "referenceInfo",
-        JSON.stringify({
-          text: reference.text,
-          secondsAgo: (now - reference.at) / 1000,
-          mentions: reference.mentions,
-        }),
-      );
-    }
 
     const startedAt = performance.now();
     try {

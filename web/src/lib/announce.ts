@@ -31,10 +31,7 @@ export type Description = {
   text: string;
 };
 
-// "Keep walking.": nothing is in the way. Never "clear" or "safe".
-export type Clear = { kind: "clear" };
-
-export type Announcement = Warning | Description | Clear;
+export type Announcement = Warning | Description;
 
 // One spoken piece. Warnings are said as the action, then the thing, each
 // cached on its own so the short commands are always ready.
@@ -48,10 +45,8 @@ const VOICE = {
   warning: { style: "calm, firm and direct, like a sighted guide", maxWaitMs: 400 },
   command: { style: "firm and clear, a short instruction", maxWaitMs: 400 },
   description: { style: "calm, clear and even", maxWaitMs: 4000 },
-  clear: { style: "calm and steady, quietly encouraging", maxWaitMs: 400 },
 };
 
-export const KEEP_WALKING: Segment = { text: "Keep walking.", ...VOICE.clear };
 
 // Where the thing is, in as few words as a guide would use. How close it is
 // already shows in "Step" versus "Bear", so there are only two distances.
@@ -95,7 +90,6 @@ export function commandSegments(): Segment[] {
 // The alarm keeps "Stop." first and the way out last.
 export function toSegments(a: Announcement): Segment[] {
   if (a.kind === "description") return [{ text: a.text, ...VOICE.description }];
-  if (a.kind === "clear") return [KEEP_WALKING];
 
   const object = a.object.charAt(0).toUpperCase() + a.object.slice(1);
   const direction = a.direction ?? "ahead";

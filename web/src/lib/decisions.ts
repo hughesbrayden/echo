@@ -11,7 +11,7 @@
 // decide() runs on the server; the phone imports only the phrase helpers.
 
 import type { Advice, Announcement, Distance, Guidance, Warning } from "@/lib/announce";
-import { describeGeometry, groundDistanceM, type CameraSetup } from "@/lib/geometry";
+import { groundDistanceM, type CameraSetup } from "@/lib/geometry";
 import type { Motion } from "@/lib/motion";
 
 const MODEL = "gpt-6-luna";
@@ -154,19 +154,12 @@ export const THRESHOLDS = {
   nearM: 4,
   closeSeconds: 1.5,
   // Camera tilted up past this (degrees): the ground is out of view, so
-  // footing and "Keep walking." can't be judged.
+  // footing can't be judged.
   lookingUpPitch: 10,
   // Head turned further than this from the walking direction (degrees):
   // left and right in the frame aren't left and right of the path, so no
-  // go-around commands or "Keep walking.".
+  // go-around commands.
   lookingAwayDeg: 35,
-  // "Keep walking." needs this frame and the one before it below these.
-  clearStop: 0.2,
-  clearGate: 0.3,
-  // Said once the way is clear within this long after a go-around command...
-  clearAfterGuidanceS: 15,
-  // ...and otherwise after this long of quiet while walking.
-  keepWalkingS: 20,
   // Below this on both sides, there is no clear way around.
   roomMin: 0.5,
   // The same height change isn't mentioned again for this long.
@@ -175,8 +168,9 @@ export const THRESHOLDS = {
   // each time up to the max, and only while the wearer is walking.
   reminderFirstS: 15,
   reminderMaxS: 60,
-  // A different thing with the exact same phrase still waits this long.
-  samePhraseS: 10,
+  // The same thing in the same place isn't said again for this long. Without
+  // a reference frame, this is what stops repeats.
+  samePhraseS: 20,
 };
 
 // Where the main thing meets the ground, top to bottom of the frame. With the
@@ -281,42 +275,21 @@ const NEW_IN_VIEW = {
     "The thing that matters most for the wearer's navigation in the newest frame was not in the frame from when Echo last spoke, or is clearly closer than it was.",
 };
 
-// Comes before the image: who is wearing the camera and how they are moving.
-// Sensor readings go in rounded, with what they mean for the image, so the
-// model can reason with them rather than decode raw numbers.
-function sceneText(motion: Motion | null, camera: CameraSetup | null): string {
-  const lines = [
-    "Camera worn at eye level by a blind pedestrian. The center of the image is where their head points.",
-  ];
-  if (!motion) return lines.join(" ");
-
-  if (!motion.walking) {
-    lines.push("They are standing still.");
-  } else if (motion.cadence > 0 && camera) {
-    const speed = motion.cadence * camera.stepLengthM;
-    lines.push(`They are walking at about ${speed.toFixed(1)} m/s, ${motion.cadence.toFixed(1)} steps per second.`);
-  } else {
-    lines.push("They are walking.");
-  }
+// Comes before the images: one short line on how the wearer is moving. Kept
+// lean on purpose; every extra sentence costs time on every call.
+function sceneText(motion: Motion | null): string {
+  if (!motion) return "Head-mounted camera on a blind pedestrian.";
+  const parts = [`Head-mounted camera on a blind pedestrian who is ${motion.walking ? "walking" : "standing still"}.`];
   if (Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg) {
-    const side = motion.headOffset > 0 ? "left" : "right";
-    lines.push(
-      `They are looking about ${roundTo(Math.abs(motion.headOffset), 5)}° to the ${side} of where they are walking, so the center of the image is not their path.`,
-    );
-  } else if (motion.turning) {
-    lines.push("Their head is turning.");
+    parts.push(`They are looking ${motion.headOffset > 0 ? "left" : "right"} of where they are walking.`);
   }
-  if (camera) {
-    lines.push(describeGeometry(motion.pitch, camera));
-  } else {
-    const tilt = roundTo(motion.pitch, 5);
-    lines.push(tilt === 0 ? "The camera points about level." : `The camera points about ${Math.abs(tilt)}° ${tilt < 0 ? "down" : "up"}.`);
-  }
-  return lines.join(" ");
+  const tilt = roundTo(motion.pitch, 5);
+  if (tilt !== 0) parts.push(`Camera tilted about ${Math.abs(tilt)}° ${tilt < 0 ? "down" : "up"}.`);
+  return parts.join(" ");
 }
 
 // What Echo said this long ago or less goes in every call.
-const TRANSCRIPT_S = 15;
+const TRANSCRIPT_S = 10;
 const ADVICE_LABEL: Record<Advice, string> = {
   stop: "Stop (alarm)",
   course: "Course",
@@ -327,20 +300,13 @@ const ADVICE_LABEL: Record<Advice, string> = {
 // Comes after the image, as background: Echo's own recent words, labelled by
 // the gate each answered.
 function transcriptText(recent: Recent[]): string {
-  recent = recent.filter((r) => r.secondsAgo < TRANSCRIPT_S).slice(-5);
+  recent = recent.filter((r) => r.secondsAgo < TRANSCRIPT_S).slice(-3);
   if (recent.length === 0) return "Echo has said nothing in the last few seconds.";
   const said = recent.map((r) => {
     const label = r.advice ? `${ADVICE_LABEL[r.advice]}: ` : r.urgent ? "Stop (alarm): " : "";
     return `${label}'${r.text}' ${Math.round(r.secondsAgo)}s ago`;
   });
   return "What Echo said recently: " + said.join("; ") + ".";
-}
-
-// After the transcript: the narrator's note, as background that may be stale.
-function backgroundText(narration: NarrationContext | null): string | null {
-  const fresh = freshNarration(narration);
-  if (!fresh) return null;
-  return `Background (about ${Math.round(fresh.secondsAgo)}s old, may be out of date): ${fresh.summary}`;
 }
 
 function roundTo(n: number, step: number): number {
@@ -360,7 +326,6 @@ export async function decide(
   apiKey: string,
   reference: Reference | null = null,
   previous: Previous | null = null,
-  narration: NarrationContext | null = null,
   camera: CameraSetup | null = null,
 ): Promise<Answers> {
   // Oldest first, each labelled, so the newest frame is last and clearly the
@@ -398,10 +363,9 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: sceneText(motion, camera) },
+            { type: "input_text", text: sceneText(motion) },
             ...images,
             { type: "input_text", text: transcriptText(recent) },
-            ...(backgroundText(narration) ? [{ type: "input_text", text: backgroundText(narration) }] : []),
           ],
         },
       ],
@@ -509,7 +473,6 @@ export function urgentWarnings(): Warning[] {
 
 // Identifies a warning by what and where, ignoring wording and urgency.
 export function announcementKey(a: Announcement): string | undefined {
-  if (a.kind === "clear") return "clear";
   if (a.kind !== "warning") return undefined;
   const advice = a.advice ?? (a.urgent ? "stop" : "course");
   // Height changes are keyed by distance too, so "close" can follow "near".
@@ -606,7 +569,6 @@ function pickAdvice(a: Answers, lastSpokeS: number): Exclude<Advice, "stop"> | n
 // Echo speaks up about new things right away and then lets them be: the same
 // thing gets the alarm again only if it is getting closer, and otherwise an
 // occasional spoken reminder while the wearer walks, further apart each time.
-// On calm stretches it says "Keep walking." now and then, never "clear".
 export function toAnnouncement(
   a: Answers,
   recent: Recent[],
@@ -712,23 +674,5 @@ export function toAnnouncement(
     return samePhrase ? null : warning;
   };
 
-  // "Keep walking." when nothing needs doing: once just after going around
-  // something, and as a quiet check-in on long calm stretches, which also
-  // tells the wearer Echo is still working. It needs two calm frames in a
-  // row, the wearer walking and facing where they walk, and the ground in
-  // view. It never says the path is clear or safe.
-  const keepWalking = (): Announcement | null => {
-    if (!motion?.walking || lookingUp || lookingAway) return null;
-    const calm = (x: { stop: number; gate: number }) =>
-      x.stop < THRESHOLDS.clearStop && x.gate < THRESHOLDS.clearGate;
-    const previous = window.at(-1);
-    if (!calm({ stop: a.stop, gate: Math.max(a.course, a.footing, a.orient) }) || !previous || !calm(previous)) return null;
-
-    const lastClearS = Math.min(Infinity, ...recent.filter((r) => r.key === "clear").map((r) => r.secondsAgo));
-    const lastGuidedS = Math.min(Infinity, ...recent.filter((r) => r.guided).map((r) => r.secondsAgo));
-    const justWentAround = lastGuidedS < THRESHOLDS.clearAfterGuidanceS && lastClearS > lastGuidedS;
-    return justWentAround || lastSpokeS >= THRESHOLDS.keepWalkingS ? { kind: "clear" } : null;
-  };
-
-  return words() ?? keepWalking();
+  return words();
 }
