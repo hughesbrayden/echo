@@ -10,7 +10,7 @@
 // The questions and thresholds are v0 guesses: tuning them is the main work.
 // decide() runs on the server; the phone imports only the phrase helpers.
 
-import type { Advice, Announcement, Distance, Guidance, Warning } from "@/lib/announce";
+import type { Advice, Announcement, Direction, Distance, Guidance, Warning } from "@/lib/announce";
 import { groundDistanceM, type CameraSetup } from "@/lib/geometry";
 import type { Motion } from "@/lib/motion";
 
@@ -525,6 +525,40 @@ const GROUND_UP_DOWN: Partial<Record<Answers["subject"], Record<"up" | "down", s
 
 // Edges to stay away from rather than walk around.
 const EDGES = new Set<Answers["subject"]>(["drop_off", "street_edge"]);
+
+// The everyday warnings, most likely first, so the phone can warm their audio
+// after Start: things in the way, height changes and edges, landmarks, then
+// reminders. No commands here; those are loaded with the alarms.
+export function commonWarnings(): Warning[] {
+  const sides: { direction: Direction; distance: Distance }[] = [
+    { direction: "ahead", distance: "near" },
+    { direction: "ahead", distance: "close" },
+    { direction: "left", distance: "near" },
+    { direction: "right", distance: "near" },
+  ];
+  const inTheWay = [...new Set([...GO_AROUND].map((s) => SUBJECT_OBJECTS[s]).concat("obstacle"))];
+  const ground = [...GROUND].flatMap((s) => [
+    SUBJECT_OBJECTS[s],
+    ...Object.values(GROUND_UP_DOWN[s] ?? {}),
+  ]).concat("uneven ground");
+  const edges = [...EDGES].map((s) => SUBJECT_OBJECTS[s]);
+  const landmarks = (["door", "crosswalk", "corner", "wall", "sign"] as const).map((s) => SUBJECT_OBJECTS[s]);
+
+  const warn = (advice: Advice, object: string, at: (typeof sides)[number], extra: Partial<Warning> = {}): Warning => ({
+    kind: "warning",
+    advice,
+    object,
+    ...at,
+    ...extra,
+  });
+  return [
+    ...inTheWay.flatMap((o) => sides.map((at) => warn("course", o, at))),
+    ...ground.flatMap((o) => sides.slice(0, 2).map((at) => warn("footing", o, at, { ground: true }))),
+    ...edges.flatMap((o) => sides.map((at) => warn("course", o, at))),
+    ...landmarks.flatMap((o) => sides.map((at) => warn("orient", o, at))),
+    ...inTheWay.flatMap((o) => sides.slice(0, 2).map((at) => warn("course", o, at, { reminder: true }))),
+  ];
+}
 
 // Which way to go when changing course. Only for something in the path that
 // is near or close, or something beside the wearer that is close enough to
