@@ -35,9 +35,11 @@ const FRAME_MAX_WIDTH = 640;
 const JPEG_QUALITY = 0.7;
 // Echo forgets what it last spoke about after this long.
 const REFERENCE_MAX_AGE_MS = 90_000;
-// The frame before this one goes along too, so the model can see motion,
-// unless it is older than this (e.g. the last request failed).
-const PREVIOUS_MAX_AGE_MS = 2_000;
+// A frame from this long before the newest one goes along too, so the model
+// sees motion over the same gap every time, whatever the API latency. Frames
+// are kept every SNAPSHOT_MS to pick from.
+const PREVIOUS_GAP_MS = 500;
+const SNAPSHOT_MS = 125;
 // How far back the spoken log reaches.
 const RECENT_MAX_AGE_MS = 120_000;
 
@@ -54,7 +56,8 @@ export default function Camera() {
   const saidRef = useRef<{ text: string; at: number; urgent: boolean; advice?: Advice; key?: string }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
-  const previousRef = useRef<{ blob: Blob; at: number } | null>(null);
+  const snapshotsRef = useRef<{ blob: Blob; at: number }[]>([]);
+  const snapshotTimerRef = useRef<number | null>(null);
   const historyRef = useRef<{ stop: number; distance: number; gate: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -127,6 +130,7 @@ export default function Camera() {
         motionRef.current.start();
       }
 
+      snapshotTimerRef.current = window.setInterval(() => void takeSnapshot(), SNAPSHOT_MS);
       void frameLoop(run);
       setStatus("running");
     } catch (e) {
@@ -149,7 +153,9 @@ export default function Camera() {
     saidRef.current = [];
     historyRef.current = [];
     referenceRef.current = null;
-    previousRef.current = null;
+    if (snapshotTimerRef.current !== null) window.clearInterval(snapshotTimerRef.current);
+    snapshotTimerRef.current = null;
+    snapshotsRef.current = [];
     setStatus("idle");
   }
 
@@ -201,15 +207,11 @@ export default function Camera() {
       ),
     );
 
-    // Skipped when Echo just spoke, since the reference frame is then the
-    // previous frame.
-    const previous = previousRef.current;
-    const referenceAt = referenceRef.current?.at ?? -Infinity;
-    if (previous && now - previous.at < PREVIOUS_MAX_AGE_MS && previous.at > referenceAt) {
+    const previous = snapshotNear(now - PREVIOUS_GAP_MS);
+    if (previous) {
       form.append("previous", previous.blob, "previous.jpg");
       form.append("previousInfo", JSON.stringify({ secondsAgo: (now - previous.at) / 1000 }));
     }
-    previousRef.current = { blob, at: now };
 
     const reference = referenceRef.current;
     if (reference && now - reference.at < REFERENCE_MAX_AGE_MS) {
@@ -254,6 +256,23 @@ export default function Camera() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  // Keeps the last second of frames, so one from half a second ago is ready.
+  async function takeSnapshot() {
+    const blob = await captureFrame();
+    if (!blob) return;
+    const now = Date.now();
+    snapshotsRef.current = [...snapshotsRef.current, { blob, at: now }].filter((f) => now - f.at <= 1000);
+  }
+
+  // The kept frame closest to `at`, if one is within a snapshot interval.
+  function snapshotNear(at: number) {
+    let best: { blob: Blob; at: number } | null = null;
+    for (const f of snapshotsRef.current) {
+      if (!best || Math.abs(f.at - at) < Math.abs(best.at - at)) best = f;
+    }
+    return best && Math.abs(best.at - at) <= SNAPSHOT_MS ? best : null;
   }
 
   function captureFrame(): Promise<Blob | null> {
