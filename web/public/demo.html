@@ -480,6 +480,12 @@ html.is-deck .echo-grid .score { row-gap: 0; }
 html.is-deck .echo-grid .strip-meta > span:last-child { display: none; }
 
 html.is-deck .echo-grid .con-title .pill:nth-of-type(3) { display: none; }
+html.is-deck .film { margin: 0; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(28px, 3.5vw, 56px); }
+.film-h { font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; }
+html.is-deck .film-h { font-size: clamp(30px, 2.8vw, 42px); line-height: 1.1; letter-spacing: -0.03em; }
+html.is-deck .film > * { min-width: 0; }
+html.is-deck .film-frame { max-height: calc(100vh - 200px); width: 100%; }
+html.is-deck .trip svg { max-height: calc(100vh - 330px); }
 
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
@@ -505,6 +511,7 @@ html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; 
 html.is-deck .chapters { display: none; }
 html.is-deck .slide { top: 60px; }
 html.is-deck .deck-ch .brand { display: none; }
+html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-height: 760px; max-width: 100%; }
 .demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }

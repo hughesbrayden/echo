@@ -480,6 +480,12 @@ html.is-deck .echo-grid .score { row-gap: 0; }
 html.is-deck .echo-grid .strip-meta > span:last-child { display: none; }
 
 html.is-deck .echo-grid .con-title .pill:nth-of-type(3) { display: none; }
+html.is-deck .film { margin: 0; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(28px, 3.5vw, 56px); }
+.film-h { font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; }
+html.is-deck .film-h { font-size: clamp(30px, 2.8vw, 42px); line-height: 1.1; letter-spacing: -0.03em; }
+html.is-deck .film > * { min-width: 0; }
+html.is-deck .film-frame { max-height: calc(100vh - 200px); width: 100%; }
+html.is-deck .trip svg { max-height: calc(100vh - 330px); }
 
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
@@ -505,6 +511,7 @@ html.is-deck .nav { display: block; position: fixed; top: 0; left: 0; right: 0; 
 html.is-deck .chapters { display: none; }
 html.is-deck .slide { top: 60px; }
 html.is-deck .deck-ch .brand { display: none; }
+html.is-deck .film .film-video { width: auto; height: calc(100vh - 240px); max-height: 760px; max-width: 100%; }
 .demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
@@ -665,7 +672,6 @@ html.is-deck .deck-ch .brand { display: none; }
   <section class="slide " data-ch="echo" data-title="The walk">
     <div class="wrap slide-inner">
       <div class="slide-sub"><span class="eyebrow"><b>02</b> The walk, seen from above</span></div>
-      <div class="map-row">
       <figure class="card trip" aria-label="A walk down an office hallway seen from above. Echo stays quiet most of the way, says Bear left, chair ahead, then Keep right, door on your left, and sounds one alarm when a person steps out.">
         <div class="trip-bar">
           <div class="ear" id="ear" aria-live="off">
@@ -741,10 +747,15 @@ html.is-deck .deck-ch .brand { display: none; }
           <span><i class="lg-alarm"></i>Alarm</span>
         </figcaption>
       </figure>
+    </div>
+  </section>
+
+  <section class="slide " data-ch="echo" data-title="The recorded walk">
+    <div class="wrap slide-inner">
       <div class="film" id="film">
         <div style="display:flex;flex-direction:column;gap:16px">
-          <span class="eyebrow">The recorded walk</span>
-          <h3 style="font-size:22px;line-height:1.2;letter-spacing:-0.02em">One real walk, with every decision Echo made shown on top.</h3>
+          <span class="eyebrow"><b>02</b> The recorded walk</span>
+          <h3 class="film-h">One real walk, with every decision Echo made shown on top.</h3>
           <p class="dim">Recorded with a phone standing in for the glasses.</p>
         </div>
         <div class="card film-video">
@@ -752,7 +763,6 @@ html.is-deck .deck-ch .brand { display: none; }
             <source src="/media/echo-walk-01.mp4" type="video/mp4">
           </video>
         </div>
-      </div>
       </div>
     </div>
   </section>
@@ -934,7 +944,7 @@ html.is-deck .deck-ch .brand { display: none; }
   <div class="deck-in">
     <div class="deck-ch" id="deck-ch"></div>
     <div class="deck-ctl">
-      <span class="deck-n mono" id="deck-n">1 / 10</span>
+      <span class="deck-n mono" id="deck-n">1 / 11</span>
       <button class="btn" id="deck-prev" type="button" aria-label="Previous slide">Back</button>
       <button class="btn deck-next" id="deck-next" type="button" aria-label="Next slide">Next</button>
     </div>
