@@ -721,6 +721,9 @@ html.is-deck .built-head { margin-bottom: 12px; flex-direction: row; align-items
 .c-ot { font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; fill: var(--ink-2); }
 .c-o.a + .c-ot, .c-ot.w { fill: #FFFFFF; }
 
+.a-l.ret { stroke-dasharray: 4 4; }
+.a-e { font-size: 11px !important; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -1040,39 +1043,16 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
         </div>
         <div class="built-r">
           <div class="card arch">
-            <div class="box-h"><span>Architecture</span><span>Twice a second</span></div>
-            <svg class="arch-svg" viewBox="0 0 560 214" role="img" aria-label="Architecture. The glasses, with a phone standing in, send frames and motion to three small server functions. The frame function asks the OpenAI Decisions API and routes the answer to silence, words or the alarm. The narrate function calls a narrator model every 4 seconds. The speak function turns words into a natural voice with Gemini TTS.">
-              <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="#98A2B3"/></marker></defs>
-              <rect class="a-node" x="6" y="44" width="128" height="130" rx="14"/>
-              <text class="a-t" x="70" y="88" text-anchor="middle">Glasses</text>
-              <text class="a-s" x="70" y="106" text-anchor="middle">phone stands in</text>
-              <text class="a-m" x="70" y="134" text-anchor="middle">CAMERA · MOTION</text>
-              <text class="a-m" x="70" y="150" text-anchor="middle">SPEAKER</text>
-              <rect class="a-grp" x="186" y="8" width="168" height="198" rx="14"/>
-              <text class="a-m" x="270" y="26" text-anchor="middle">VERCEL FUNCTIONS</text>
-              <rect class="a-node hl" x="198" y="36" width="144" height="62" rx="10"/>
-              <text class="a-t" x="270" y="60" text-anchor="middle">/frame</text>
-              <text class="a-s" x="270" y="78" text-anchor="middle">context in, routing out</text>
-              <rect class="a-node" x="198" y="108" width="144" height="40" rx="10"/>
-              <text class="a-t sm" x="270" y="133" text-anchor="middle">/narrate</text>
-              <rect class="a-node" x="198" y="156" width="144" height="40" rx="10"/>
-              <text class="a-t sm" x="270" y="181" text-anchor="middle">/speak</text>
-              <rect class="a-node" x="406" y="36" width="148" height="62" rx="10"/>
-              <text class="a-t" x="480" y="60" text-anchor="middle">Decisions API</text>
-              <text class="a-s" x="480" y="78" text-anchor="middle">OpenAI · 2 per second</text>
-              <rect class="a-node" x="406" y="108" width="148" height="40" rx="10"/>
-              <text class="a-s" x="480" y="132" text-anchor="middle">Narrator · every 4 s</text>
-              <rect class="a-node" x="406" y="156" width="148" height="40" rx="10"/>
-              <text class="a-s" x="480" y="180" text-anchor="middle">Gemini TTS · voice</text>
-              <path class="a-l" d="M134 72 H198" marker-end="url(#ah)"/>
-              <path class="a-l" d="M134 128 H198" marker-end="url(#ah)"/>
-              <path class="a-l" d="M198 176 H134" marker-end="url(#ah)"/>
-              <path class="a-l" d="M342 62 H406" marker-end="url(#ah)" marker-start="url(#ah)"/>
-              <path class="a-l" d="M342 128 H406" marker-end="url(#ah)" marker-start="url(#ah)"/>
-              <path class="a-l" d="M342 176 H406" marker-end="url(#ah)" marker-start="url(#ah)"/>
-              <text class="a-e" x="166" y="66" text-anchor="middle">frames</text>
-              <text class="a-e" x="166" y="192" text-anchor="middle">voice</text>
-              <text class="a-e" x="374" y="56" text-anchor="middle">answers</text>
+            <div class="box-h"><span>Architecture</span><span>Every look, twice a second</span></div>
+            <svg class="arch-svg" viewBox="0 0 560 176" role="img" aria-label="Architecture. The glasses capture frames and motion. The OpenAI Decisions API answers the navigation questions. Plain code on Vercel decides whether to stay quiet, speak or sound the alarm, helped by a narrator every 4 seconds. Gemini TTS speaks the words, and the voice plays in your ear.">
+              <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#98A2B3"/></marker></defs>
+              <text class="a-m" x="59" y="22" text-anchor="middle">SEE</text><text class="a-m" x="205" y="22" text-anchor="middle">DECIDE</text><text class="a-m" x="351" y="22" text-anchor="middle">ROUTE</text><text class="a-m" x="497" y="22" text-anchor="middle">SPEAK</text>
+              <rect class="a-node" x="4" y="34" width="110" height="66" rx="12"/><text class="a-t" x="59" y="62" text-anchor="middle">Glasses</text><text class="a-s" x="59" y="82" text-anchor="middle">camera · motion</text><rect class="a-node hl" x="150" y="34" width="110" height="66" rx="12"/><text class="a-t" x="205" y="62" text-anchor="middle">OpenAI</text><text class="a-s" x="205" y="82" text-anchor="middle">Decisions API</text><rect class="a-node" x="296" y="34" width="110" height="66" rx="12"/><text class="a-t" x="351" y="62" text-anchor="middle">Plain code</text><text class="a-s" x="351" y="82" text-anchor="middle">on Vercel</text><rect class="a-node" x="442" y="34" width="110" height="66" rx="12"/><text class="a-t" x="497" y="62" text-anchor="middle">Gemini</text><text class="a-s" x="497" y="82" text-anchor="middle">TTS</text>
+              <path class="a-l" d="M114 67 H148" marker-end="url(#ah)"/>
+              <path class="a-l" d="M260 67 H294" marker-end="url(#ah)"/>
+              <path class="a-l" d="M406 67 H440" marker-end="url(#ah)"/>
+              <path class="a-l ret" d="M497 100 V150 H59 V102" marker-end="url(#ah)"/>
+              <text class="a-e" x="284" y="146" text-anchor="middle">voice or chime, in your ear</text>
             </svg>
           </div>
           <div class="card ctx">
