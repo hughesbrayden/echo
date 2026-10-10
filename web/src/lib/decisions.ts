@@ -275,9 +275,11 @@ const NEW_IN_VIEW = {
     "The thing that matters most for the wearer's navigation in the newest frame was not in the frame from when Echo last spoke, or is clearly closer than it was.",
 };
 
-// Comes before the images: one short line on how the wearer is moving. Kept
+// Comes before the images: how the wearer is moving, plus a ruler for the
+// frame (how far ahead the ground at the bottom and middle is) and walking
+// speed, so "a step or two" and "the next few steps" mean something. Kept
 // lean on purpose; every extra sentence costs time on every call.
-function sceneText(motion: Motion | null): string {
+function sceneText(motion: Motion | null, camera: CameraSetup | null): string {
   if (!motion) return "Head-mounted camera on a blind pedestrian.";
   const parts = [`Head-mounted camera on a blind pedestrian who is ${motion.walking ? "walking" : "standing still"}.`];
   if (Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg) {
@@ -285,6 +287,18 @@ function sceneText(motion: Motion | null): string {
   }
   const tilt = roundTo(motion.pitch, 5);
   if (tilt !== 0) parts.push(`Camera tilted about ${Math.abs(tilt)}° ${tilt < 0 ? "down" : "up"}.`);
+  if (camera) {
+    const bottom = groundDistanceM(1, motion.pitch, camera);
+    const middle = groundDistanceM(0.5, motion.pitch, camera);
+    if (bottom !== null && middle !== null) {
+      parts.push(`The bottom of the image is ground about ${bottom.toFixed(1)} m ahead, the middle about ${Math.round(middle)} m.`);
+    } else if (bottom !== null) {
+      parts.push(`The bottom of the image is ground about ${bottom.toFixed(1)} m ahead.`);
+    }
+    if (motion.walking && motion.cadence > 0) {
+      parts.push(`Walking about ${(motion.cadence * camera.stepLengthM).toFixed(1)} m/s.`);
+    }
+  }
   return parts.join(" ");
 }
 
@@ -363,7 +377,7 @@ export async function decide(
         {
           role: "user",
           content: [
-            { type: "input_text", text: sceneText(motion) },
+            { type: "input_text", text: sceneText(motion, camera) },
             ...images,
             { type: "input_text", text: transcriptText(recent) },
           ],
