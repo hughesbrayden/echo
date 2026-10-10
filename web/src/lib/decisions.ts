@@ -1,8 +1,9 @@
-// Server-side only. Asks OpenAI's Decisions API a few questions about the
+// Asks OpenAI's Decisions API a few questions about the
 // newest frame and turns the answers into silence, words, or the alarm.
 // Docs: https://developers.openai.com/api/docs/guides/decisions
 //
 // The questions and thresholds are v0 guesses: tuning them is the main work.
+// decide() runs on the server; the phone imports only the phrase helpers.
 
 import { toPhrase, type Announcement, type Warning } from "@/lib/announce";
 import type { Motion } from "@/lib/motion";
@@ -160,6 +161,18 @@ const SUBJECT_OBJECTS: Record<Answers["subject"], string> = {
   vehicle: "vehicle",
   other: "something",
 };
+
+// Every alarm Echo can sound, so the phone can preload their audio.
+export function urgentWarnings(): Warning[] {
+  return SUBJECTS.flatMap((subject) =>
+    DIRECTIONS.map((direction) => ({
+      kind: "warning" as const,
+      object: SUBJECT_OBJECTS[subject],
+      direction,
+      urgent: true,
+    })),
+  );
+}
 
 // Routes answers to silence, a warning, or an urgent warning (the alarm).
 // Templates, not an LLM.

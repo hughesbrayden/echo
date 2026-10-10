@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { playAlarm } from "@/lib/alarm";
-import { SPEECH_STYLE, toPhrase, type Announcement } from "@/lib/announce";
-import { speak, stopSpeaking } from "@/lib/speech";
+import { MAX_WAIT_MS, SPEECH_STYLE, toPhrase, type Announcement } from "@/lib/announce";
+import { preload, speak, stopSpeaking } from "@/lib/speech";
 
 type Props = {
   // Pass a new object each time something should be said.
@@ -34,9 +34,11 @@ export default function Announcer({ announcement, className }: Props) {
       if (isWarning) warningRef.current = id;
       if (announcement!.kind === "warning" && announcement!.urgent) {
         stopSpeaking();
+        // Fetch the words while the tone plays, unless they are preloaded.
+        void preload([{ text: phrase, style }]);
         await playAlarm();
       }
-      await speak(phrase, style);
+      await speak(phrase, style, MAX_WAIT_MS[announcement!.kind]);
       if (warningRef.current === id) warningRef.current = 0;
     }
     void run();

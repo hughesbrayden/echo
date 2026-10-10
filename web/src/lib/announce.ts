@@ -26,6 +26,13 @@ export const SPEECH_STYLE: Record<Announcement["kind"], string> = {
   description: "calm, clear and even",
 };
 
+// How long to wait for Gemini before the browser voice speaks instead.
+// A warning that arrives late is worse than one in a plainer voice.
+export const MAX_WAIT_MS: Record<Announcement["kind"], number> = {
+  warning: 1200,
+  description: 4000,
+};
+
 const DIRECTION_WORDS: Record<Direction, string> = {
   left: "on your left",
   ahead: "ahead",

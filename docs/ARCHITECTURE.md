@@ -87,7 +87,7 @@ The phone posts each frame to `POST /api/frame` (multipart) and the server repli
 
 ```
 in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo }])
-out: { say: string | null, alarm: boolean, answers: { hazard_close, worth_saying, urgency, subject, direction, latencyMs, stub } }
+out: { announcement: { kind: "warning", object, direction, urgent? } | null, answers: { hazard_close, worth_saying, urgency, subject, direction, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.

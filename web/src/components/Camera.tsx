@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import Announcer from "@/components/Announcer";
-import { toPhrase, type Announcement } from "@/lib/announce";
+import { SPEECH_STYLE, toPhrase, type Announcement } from "@/lib/announce";
+import { urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
-import { stopSpeaking } from "@/lib/speech";
+import { preload, stopSpeaking } from "@/lib/speech";
 import { MotionTracker, requestMotionPermission, type Motion } from "@/lib/motion";
 
 // Sample announcements for the test buttons.
@@ -79,6 +80,10 @@ export default function Camera() {
       await video.play();
 
       setAnnouncement({ kind: "description", text: "Echo on" });
+      // Alarm phrases are pre-made clips so the words follow the tone at once.
+      void preload(
+        urgentWarnings().map((w) => ({ text: toPhrase(w), style: SPEECH_STYLE.warning })),
+      );
 
       if (motionGranted) {
         motionRef.current = new MotionTracker();
