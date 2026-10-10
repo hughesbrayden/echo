@@ -61,15 +61,31 @@ export default function Camera() {
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
   const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
+  // Alarm phrases and commands loading at Start; Echo waits for them.
+  const [voiceProgress, setVoiceProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
 
   useEffect(() => stop, []);
 
   async function start() {
     setError(null);
+    setVoiceNote(null);
     setStatus("starting");
+    const run = ++loopRef.current;
 
     // Both must start inside the tap, before any other await, for iOS Safari.
     unlockAudio();
+
+    // Every alarm phrase and command must be ready before Echo starts
+    // watching, so a warning never waits on the network. Loads while the
+    // camera starts.
+    const phrases = [...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
+    setVoiceProgress({ loaded: 0, total: phrases.length });
+    const voiceReady = preload(phrases, {
+      pin: true,
+      onProgress: (loaded, total) => setVoiceProgress({ loaded, total }),
+    });
+
     const motionGranted = await requestMotionPermission();
     setMotionAllowed(motionGranted);
 
@@ -93,18 +109,24 @@ export default function Camera() {
       video.srcObject = stream;
       await video.play();
 
+      const missing = await voiceReady;
+      if (run !== loopRef.current) return; // Stopped while loading.
+      setVoiceProgress(null);
+      if (missing > 0) {
+        setVoiceNote(`${missing} of ${phrases.length} warning phrases didn't load and will use the phone voice.`);
+      }
+
       setAnnouncement({ kind: "description", text: "Echo on" });
-      // Commands and alarm phrases are pre-made clips so they play at once.
-      void preload([...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])]);
 
       if (motionGranted) {
         motionRef.current = new MotionTracker();
         motionRef.current.start();
       }
 
-      void frameLoop(++loopRef.current);
+      void frameLoop(run);
       setStatus("running");
     } catch (e) {
+      setVoiceProgress(null);
       setStatus("error");
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -260,7 +282,8 @@ export default function Camera() {
             hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
             {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · dist{" "}
             {answers.distance.toFixed(1)}
-            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`} · api{" "}
+            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`}
+            {answers.ground_change >= 0.5 && ` · ${answers.ground_kind} ${answers.ground_change.toFixed(2)}`} · api{" "}
             {answers.latencyMs} ms
             {answers.stub && " · stub"}
           </p>
@@ -268,6 +291,7 @@ export default function Camera() {
         {running && !motionAllowed && (
           <p className="text-sm text-yellow-300">Motion sensor unavailable or not allowed.</p>
         )}
+        {voiceNote && <p className="text-sm text-yellow-300">{voiceNote}</p>}
         <Announcer announcement={announcement} className="text-lg" />
         {error && <p className="text-sm text-red-400">{error}</p>}
 
@@ -292,7 +316,13 @@ export default function Camera() {
           disabled={status === "starting"}
           className="h-20 w-full rounded-2xl bg-white text-2xl font-semibold text-black disabled:opacity-50"
         >
-          {running ? "Stop" : status === "starting" ? "Starting…" : "Start Echo"}
+          {running
+            ? "Stop"
+            : status === "starting"
+              ? voiceProgress
+                ? `Loading voice ${voiceProgress.loaded}/${voiceProgress.total}…`
+                : "Starting…"
+              : "Start Echo"}
         </button>
       </div>
     </main>
