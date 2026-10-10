@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import Announcer from "@/components/Announcer";
-import { commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
+import { KEEP_WALKING, commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -48,7 +48,7 @@ export default function Camera() {
   // Bumped on every start and stop so a loop from an earlier run ends.
   const loopRef = useRef(0);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
+  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string; guided: boolean }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
   const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
@@ -79,7 +79,7 @@ export default function Camera() {
     // Every alarm phrase and command must be ready before Echo starts
     // watching, so a warning never waits on the network. Loads while the
     // camera starts.
-    const phrases = [...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
+    const phrases = [KEEP_WALKING, ...commandSegments(), ...urgentWarnings().map((w) => toSegments(w)[0])];
     setVoiceProgress({ loaded: 0, total: phrases.length });
     const voiceReady = preload(phrases, {
       pin: true,
@@ -179,6 +179,7 @@ export default function Camera() {
           text: s.text,
           secondsAgo: (now - s.at) / 1000,
           urgent: s.urgent,
+          guided: s.guided,
           key: s.key,
         })),
       ),
@@ -227,6 +228,7 @@ export default function Camera() {
           at: Date.now(),
           urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
           key: announcementKey(data.announcement),
+          guided: data.announcement.kind === "warning" && !!data.announcement.guidance,
         });
         // Count repeat mentions of the same thing; a new thing starts over.
         const mentions = data.sameObject && reference ? reference.mentions + 1 : 1;
@@ -274,7 +276,7 @@ export default function Camera() {
         {running && motion && (
           <p className="font-mono text-sm">
             {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
-            {motion.yawRate}°/s · accel {motion.accelRms}
+            {motion.yawRate}°/s · accel {motion.accelRms} · pitch {motion.pitch}° · head {motion.headOffset}°
           </p>
         )}
         {running && answers && (
