@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // No Next.js button over the controls, so screen recordings stay clean.
+  // Build and runtime errors still show.
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

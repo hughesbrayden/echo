@@ -12,6 +12,9 @@ type Props = {
   className?: string;
 };
 
+// How long a caption stays up after Echo finishes saying it.
+const CAPTION_HOLD_MS = 5000;
+
 // Speaks whatever it is handed and shows it as a caption. Warnings cut off
 // descriptions; descriptions are dropped while a warning is still playing.
 // Urgent warnings sound the alarm tone first. A newer announcement stops an
@@ -26,6 +29,7 @@ export default function Announcer({ announcement, className }: Props) {
   const [severity, setSeverity] = useState<Severity>("info");
   // Shown under the caption when the nicer voice wasn't used or nothing played.
   const [voice, setVoice] = useState<Voice | null>(null);
+  const hideRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!announcement) return;
@@ -38,6 +42,7 @@ export default function Announcer({ announcement, className }: Props) {
     const urgent = announcement.kind === "warning" && !!announcement.urgent;
 
     async function run() {
+      if (hideRef.current !== null) window.clearTimeout(hideRef.current);
       setCaption(toPhrase(announcement!));
       setSeverity(severityOf(announcement!));
       setVoice(null);
@@ -58,11 +63,23 @@ export default function Announcer({ announcement, className }: Props) {
         void preload([toSegments({ ...a, reminder: true })[0]]);
       }
       if (warningRef.current === id) warningRef.current = 0;
+      // Clear the screen once it has been said, unless something newer is up.
+      if (latestRef.current === id) {
+        hideRef.current = window.setTimeout(() => {
+          if (latestRef.current === id) setCaption(null);
+        }, CAPTION_HOLD_MS);
+      }
     }
     void run();
   }, [announcement]);
 
-  useEffect(() => stopSpeaking, []);
+  useEffect(
+    () => () => {
+      stopSpeaking();
+      if (hideRef.current !== null) window.clearTimeout(hideRef.current);
+    },
+    [],
+  );
 
   if (!caption) return null;
   return (
