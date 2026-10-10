@@ -83,29 +83,28 @@ The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" be
 
 ### The contract both halves build against
 
-Defined in [`lib/contract.ts`](../lib/contract.ts). Change it there first, then on both sides.
+The phone posts each frame to `POST /api/frame` (multipart) and the server replies with what to do. Defined in [`web/src/app/api/frame/route.ts`](../web/src/app/api/frame/route.ts).
 
 ```
-POST /api/decide
-in:  { images: [jpeg data URLs, newest last], recent: [{ text, secondsAgo }], userRules? }
-out: { hazard_close, worth_saying, urgency (0-3), subject, direction, latencyMs, stub }
+in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo }])
+out: { say: string | null, alarm: boolean, answers: { hazard_close, worth_saying, urgency, subject, direction, latencyMs, stub } }
 ```
 
-With no `OPENAI_API_KEY` (or `?stub=1`), the endpoint returns fake answers, so the phone side never waits on the API side.
+With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.
 
 ### Who does what
 
 | Brayden: decisions | Teammate: phone and hosting |
 | --- | --- |
-| Get the key calling the Decisions API: `node scripts/test-decision.mjs photo.jpg` | Deploy this repo to Vercel, set `OPENAI_API_KEY` |
-| Own [`lib/questions.ts`](../lib/questions.ts) and [`lib/decisions.ts`](../lib/decisions.ts) | Own [`app/page.tsx`](../app/page.tsx) and [`lib/audio.ts`](../lib/audio.ts) |
-| Tune thresholds in [`lib/router.ts`](../lib/router.ts) on recorded walks | Camera loop, alarm, Gemini TTS for words, recording and `/demo` page |
+| Get the key calling the Decisions API: `node web/scripts/test-decision.mjs photo.jpg` | Deploy to Vercel with Root Directory `web`, set `OPENAI_API_KEY` |
+| Own the questions, context text and thresholds in [`web/src/lib/decisions.ts`](../web/src/lib/decisions.ts) | Own [`web/src/components/Camera.tsx`](../web/src/components/Camera.tsx), audio and motion |
+| Tune thresholds on recorded walks | Gemini TTS for words, recording and the `/demo` page |
 
-Merge point: when the real `/api/decide` returns answers, untick "Use fake answers" on the phone. That is the first end-to-end run.
+Merge point: set `OPENAI_API_KEY` in Vercel. The on-screen debug line drops "stub" and shows real probabilities. That is the first end-to-end run.
 
 ### Milestones
 
-- [x] **M0, scaffold:** contract, stub API, camera page, alarm tone, browser speech (this commit)
+- [x] **M0, scaffold:** camera page, motion, alarm tone, browser speech, `/api/frame` calling the Decisions API with stub fallback
 - [ ] **M1, camera to probabilities:** deployed on Vercel, real answers on screen from the phone
 - [ ] **M2, end-to-end loop:** continuous frames, routing, alarm and words on the phone
 - [ ] **M3, better voice and context:** Gemini TTS for words, alarm phrase as a pre-made clip, recent speech in every request
@@ -115,7 +114,7 @@ Cut until M2 works: a speaking LLM, the cheap pre-check, motion sensors, and the
 
 ### Streaming
 
-The Decisions API takes images, not video. The camera streams live in the browser, the page grabs a 640px JPEG every 250 ms into a small buffer, and whenever the previous request returns it sends the newest frame plus one from about 0.5 s earlier. Answers older than 2.5 s are dropped rather than spoken late.
+The Decisions API takes images, not video. The camera streams live in the browser and the page sends a 640px JPEG every 500 ms, skipping any frame while a call is still pending, so it always sends the newest view. Sending two frames for motion is a hypothesis to test.
 
 ### Recorded demo (M4)
 

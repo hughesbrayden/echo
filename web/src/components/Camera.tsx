@@ -19,6 +19,7 @@ export default function Camera() {
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
   const motionRef = useRef<MotionTracker | null>(null);
+  const saidRef = useRef<{ text: string; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export default function Camera() {
   const [lastSaid, setLastSaid] = useState<string | null>(null);
   const [motion, setMotion] = useState<Motion | null>(null);
   const [motionAllowed, setMotionAllowed] = useState(true);
+  const [answers, setAnswers] = useState<FrameResponse["answers"] | null>(null);
 
   useEffect(() => stop, []);
 
@@ -105,6 +107,13 @@ export default function Camera() {
       setMotion(frameMotion);
     }
 
+    const now = Date.now();
+    saidRef.current = saidRef.current.filter((s) => now - s.at < 15000);
+    form.append(
+      "recent",
+      JSON.stringify(saidRef.current.map((s) => ({ text: s.text, secondsAgo: (now - s.at) / 1000 }))),
+    );
+
     inFlightRef.current = true;
     const startedAt = performance.now();
     try {
@@ -113,6 +122,8 @@ export default function Camera() {
       const data: FrameResponse = await res.json();
       setLatencyMs(Math.round(performance.now() - startedAt));
       setSent((n) => n + 1);
+      setAnswers(data.answers ?? null);
+      if (data.say) saidRef.current.push({ text: data.say, at: Date.now() });
       if (data.alarm) {
         void alarm(data.say ?? "Stop.");
       } else if (data.say) {
@@ -172,6 +183,13 @@ export default function Camera() {
           <p className="font-mono text-sm">
             {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
             {motion.yawRate}°/s · accel {motion.accelRms}
+          </p>
+        )}
+        {running && answers && (
+          <p className="font-mono text-sm">
+            hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
+            {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · api {answers.latencyMs} ms
+            {answers.stub && " · stub"}
           </p>
         )}
         {running && !motionAllowed && (
