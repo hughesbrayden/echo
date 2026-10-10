@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
 import Announcer from "@/components/Announcer";
-import { commandSegments, toPhrase, toSegments, type Announcement } from "@/lib/announce";
+import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -48,10 +48,10 @@ export default function Camera() {
   // Bumped on every start and stop so a loop from an earlier run ends.
   const loopRef = useRef(0);
   const motionRef = useRef<MotionTracker | null>(null);
-  const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
+  const saidRef = useRef<{ text: string; at: number; urgent: boolean; advice?: Advice; key?: string }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
-  const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
+  const historyRef = useRef<{ stop: number; distance: number; gate: number; at: number }[]>([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +179,7 @@ export default function Camera() {
           text: s.text,
           secondsAgo: (now - s.at) / 1000,
           urgent: s.urgent,
+          advice: s.advice,
           key: s.key,
         })),
       ),
@@ -187,9 +188,9 @@ export default function Camera() {
       "history",
       JSON.stringify(
         historyRef.current.map((h) => ({
-          hazard_close: h.hazard_close,
-          urgency: h.urgency,
+          stop: h.stop,
           distance: h.distance,
+          gate: h.gate,
           secondsAgo: (now - h.at) / 1000,
         })),
       ),
@@ -217,8 +218,9 @@ export default function Camera() {
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
       if (data.answers) {
-        const { hazard_close, urgency, distance } = data.answers;
-        historyRef.current = [...historyRef.current, { hazard_close, urgency, distance, at: now }].slice(-2);
+        const { stop, distance, course, footing, orient } = data.answers;
+        const gate = Math.max(course, footing, orient);
+        historyRef.current = [...historyRef.current, { stop, distance, gate, at: now }].slice(-2);
       }
       if (data.announcement) {
         const text = toPhrase(data.announcement);
@@ -226,6 +228,7 @@ export default function Camera() {
           text,
           at: Date.now(),
           urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
+          advice: data.announcement.kind === "warning" ? data.announcement.advice : undefined,
           key: announcementKey(data.announcement),
         });
         // Count repeat mentions of the same thing; a new thing starts over.
@@ -274,16 +277,15 @@ export default function Camera() {
         {running && motion && (
           <p className="font-mono text-sm">
             {motion.walking ? "walking" : "still"} · {motion.turning ? "turning" : "steady"} · yaw{" "}
-            {motion.yawRate}°/s · accel {motion.accelRms}
+            {motion.yawDeg}° · {motion.stepsPerSecond} steps/s · tilt {motion.tiltDeg ?? "–"}°
           </p>
         )}
         {running && answers && (
           <p className="font-mono text-sm">
-            hazard {answers.hazard_close.toFixed(2)} · say {answers.worth_saying.toFixed(2)} · urgency{" "}
-            {answers.urgency.toFixed(1)} · {answers.subject} {answers.direction} · dist{" "}
-            {answers.distance.toFixed(1)}
-            {answers.same_as_last !== null && ` · same ${answers.same_as_last.toFixed(2)}`}
-            {answers.ground_change >= 0.5 && ` · ${answers.ground_kind} ${answers.ground_change.toFixed(2)}`} · api{" "}
+            stop {answers.stop.toFixed(2)} · course {answers.course.toFixed(2)} · footing{" "}
+            {answers.footing.toFixed(2)} · orient {answers.orient.toFixed(2)} · {answers.subject}{" "}
+            {answers.direction} · dist {answers.distance.toFixed(1)}
+            {answers.new_in_view !== null && ` · new ${answers.new_in_view.toFixed(2)}`} · api{" "}
             {answers.latencyMs} ms
             {answers.stub && " · stub"}
           </p>

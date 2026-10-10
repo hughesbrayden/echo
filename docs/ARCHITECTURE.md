@@ -24,23 +24,23 @@ The pipeline has four stages: capture, decide, respond, tune.
 
 The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`POST /v1/decisions`, model `gpt-6-luna`) takes text plus images and answers your questions with probabilities. It is in public beta, charges only for input ($0.10 per 1M tokens), and remembers nothing between calls, so each request must say what Echo recently said.
 
-**A starting question set, meant to be rewritten:**
+**The question set.** Navigation is the frame: four gates ask what the wearer should do differently, and the rest supply the words.
 
 | Name | Type | Asks |
 | --- | --- | --- |
-| `hazard_close` | predicate | Is something in the path within about 2 m that could be walked into or fallen from? |
-| `worth_saying` | predicate | Is something new, compared to what was last said, that the wearer would want to know now? |
-| `urgency` | score | none, notice, caution, stop |
-| `subject` | choice | person, chair, table, bench, pole, trash can, stairs, curb, door, wall, bicycle, vehicle, sign, other obstacle, other |
+| `stop` | predicate | Will they walk into something, be hit, or step off an edge within a step or two? |
+| `course` | predicate | Should they change direction (something in the way, heading for the street or the edge of the path)? |
+| `footing` | predicate | Should they change pace or how they step (curb, step, stairs, ramp, uneven ground, crowd)? |
+| `orient` | predicate | Is there something that helps them know where they are or choose where to go (door, corner, crossing, stairs or a ramp to the side)? |
+| `subject` | choice | The one thing that matters most for navigation: person, chair, ..., stairs, step, curb, ramp, drop-off, street edge, door, crosswalk, corner, other |
 | `direction` | choice | left, ahead, right |
 | `distance` | score | far (over 3 m), near (1 to 3 m), close (under 1 m) |
-| `room_left`, `room_right` | predicate | Is there open floor to walk past the main thing on that side? Picks "Bear left" / "Step right", or "No clear way around. Wait." |
-| `ground_change` | predicate | Does the ground in the path change height within a few steps (ramp, step, curb, stairs)? |
-| `ground_kind` | choice | ramp, step, curb, stairs. Up vs. down isn't asked: one frame got it wrong in tests. |
-| `ground_distance` | score | far, near, close. Said when near ("Curb, just ahead. Slow down.") and again when close. |
-| `same_as_last` | predicate | Is the main thing the same one Echo last spoke about? Asked only when the frame from that moment is sent as a second image. |
+| `room_left`, `room_right` | predicate | Is there walkable ground to get past what's in the way on that side? |
+| `new_in_view` | predicate | Is the thing that matters most new since the frame from when Echo last spoke, or clearly closer? Asked only when that frame is sent. |
 
-**Routing:** high `hazard_close` plus `urgency` near stop sounds the alarm. A high `worth_saying` triggers words. Everything else is silence.
+**Context**, in order: who is wearing the camera and how they are moving (walking pace, head turns, camera tilt, rounded and in plain words), the image, then what Echo said in the last 15 s, each line labelled by the gate it answered.
+
+**Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise the strongest of `footing`, `course` and `orient` picks the kind of sentence ("Curb, just ahead. Slow down.", "Chair, a few steps ahead. Bear left.", "Door, on your right."). Right after Echo speaks the bar is higher and eases back over 15 s. No gate, no words.
 
 Predicates are the safer gate: in [community tests](https://community.openai.com/t/decisions-api-is-now-available-in-public-beta/1403877), choice answers came out overconfident and shifted with option order.
 
@@ -92,9 +92,9 @@ The finish line is one recorded walk: Echo stays quiet, says "Obstacle ahead" be
 The phone posts each frame to `POST /api/frame` (multipart) and the server replies with what to do. Defined in [`web/src/app/api/frame/route.ts`](../web/src/app/api/frame/route.ts).
 
 ```
-in:  frame (JPEG), motion (JSON: walking, turning, yaw), recent (JSON: [{ text, secondsAgo, urgent, key }]),
-     history (JSON: last 2 frames' hazard_close, urgency, distance), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
-out: { announcement: { kind: "warning", object, direction, distance, guidance?, urgent?, reminder? } | null, sameObject, answers: { hazard_close, worth_saying, urgency, subject, direction, distance, same_as_last, room_left, room_right, ground_change, ground_kind, ground_distance, latencyMs, stub } }
+in:  frame (JPEG), motion (JSON: walking, turning, yawDeg, stepsPerSecond, tiltDeg), recent (JSON: [{ text, secondsAgo, urgent, advice, key }]),
+     history (JSON: last 2 frames' stop, distance, gate), reference (JPEG from when Echo last spoke) + referenceInfo (JSON: text, secondsAgo, mentions)
+out: { announcement: { kind: "warning", advice, object, direction, distance, guidance?, urgent?, reminder?, ground? } | null, sameObject, answers: { stop, course, footing, orient, new_in_view, subject, direction, distance, room_left, room_right, latencyMs, stub } }
 ```
 
 With no `OPENAI_API_KEY` set, the route returns fake answers, so the phone side never waits on the API side.

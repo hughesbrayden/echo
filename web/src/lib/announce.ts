@@ -7,8 +7,13 @@ export type Distance = "close" | "near" | "far";
 // beside the wearer, or wait for a person or vehicle with no clear way around.
 export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait" | "slow";
 
+// Which question a warning answers: stop now, change course, change pace or
+// footing, or something that helps the wearer orient.
+export type Advice = "stop" | "course" | "footing" | "orient";
+
 export type Warning = {
   kind: "warning";
+  advice?: Advice;
   object: string;
   direction?: Direction;
   distance?: Distance;
