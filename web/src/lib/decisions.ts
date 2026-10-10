@@ -277,7 +277,7 @@ const NEW_IN_VIEW = {
 // frame (how far ahead the ground at the bottom and middle is) and walking
 // speed, so "a step or two" and "the next few steps" mean something. Kept
 // lean on purpose; every extra sentence costs time on every call.
-function sceneText(motion: Motion | null, camera: CameraSetup | null): string {
+export function sceneText(motion: Motion | null, camera: CameraSetup | null): string {
   if (!motion) return "Head-mounted camera on a blind pedestrian.";
   const parts = [`Head-mounted camera on a blind pedestrian who is ${motion.walking ? "walking" : "standing still"}.`];
   if (Math.abs(motion.headOffset) > THRESHOLDS.lookingAwayDeg) {
@@ -471,9 +471,10 @@ function toDistance(score: number, meters: number | null = null, speed = 0): Dis
   return "far";
 }
 
-// Every alarm Echo can sound, so the phone can preload their audio.
+// Every alarm Echo can sound, so the phone can preload their audio. Only
+// things that move get the alarm, so that's 3 subjects x 3 directions.
 export function urgentWarnings(): Warning[] {
-  return SUBJECTS.flatMap((subject) =>
+  return SUBJECTS.filter((subject) => MOVES.has(subject)).flatMap((subject) =>
     DIRECTIONS.map((direction) => ({
       kind: "warning" as const,
       object: SUBJECT_OBJECTS[subject],

@@ -43,7 +43,11 @@ The [Decisions API](https://developers.openai.com/api/docs/guides/decisions) (`P
 
 **Routing:** `stop` confirmed across two frames sounds the alarm. Otherwise footing wins for height changes, course for things in the way, and orient only above a higher bar. Right after Echo speaks the bar is raised and eases back over 15 s, and words need the previous frame to agree unless the thing is close.
 
-**Spoken lines lead with the action:** "Stop. Person in front. Step left." / "Bear left. Chair ahead." / "Slow down. Curb ahead." / "Door on your right."
+**Spoken lines** are written per frame (see What Echo says); only the alarm keeps a fixed form: "Stop. Person in front. Step left."
+
+## What Echo says
+
+The decision questions settle when Echo speaks and what about. The words are not templates: the phone sends that frame and the picked warning (subject, side, distance, which question, the side with more room) to `POST /api/say`, where a fast Gemini model writes one line of at most 14 words, the way a sighted friend walking alongside would ("Wall ahead, the hallway opens to your left."), and Gemini TTS voices it in the same request. The writer trusts the image over the hint and can answer "(nothing)" to stay quiet. If Gemini text is unavailable it falls back to `gpt-6-luna` on the Responses API; if the whole call fails, the old template plays. One line is written at a time, and a line that comes back more than 3.5 s later, or after an alarm, is dropped. The alarm itself stays canned and preloaded: tone, "Stop. Person on your left.", then the way out. Code: [`web/src/lib/line.ts`](../web/src/lib/line.ts).
 
 ## The background narrator
 

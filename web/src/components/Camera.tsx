@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FrameResponse } from "@/app/api/frame/route";
+import type { SayResponse } from "@/app/api/say/route";
 import type { MotionSample, Narration } from "@/lib/narrator";
 import Announcer from "@/components/Announcer";
 import { AroundYou, Details, EchoMark, FocusHalo, StopGlow, TopBar } from "@/components/Hud";
-import { commandSegments, toPhrase, toSegments, type Advice, type Announcement } from "@/lib/announce";
+import { commandSegments, toPhrase, toSegments, type Advice, type Announcement, type Warning } from "@/lib/announce";
 import { announcementKey, urgentWarnings } from "@/lib/decisions";
 import { unlockAudio } from "@/lib/audio";
 import { preload, stopSpeaking } from "@/lib/speech";
@@ -41,6 +42,8 @@ const JPEG_QUALITY = 0.7;
 // are kept every SNAPSHOT_MS to pick from.
 const PREVIOUS_GAP_MS = 500;
 const SNAPSHOT_MS = 125;
+// A written line that comes back later than this is stale and dropped.
+const LINE_MAX_AGE_MS = 3500;
 // How far back the spoken log reaches.
 const RECENT_MAX_AGE_MS = 120_000;
 // The background narrator runs this long after its previous call finishes,
@@ -67,6 +70,8 @@ export default function Camera() {
   const saidRef = useRef<
     { text: string; at: number; urgent: boolean; advice?: Advice; key?: string; guided: boolean }[]
   >([]);
+  // True while a line is being written and voiced; one at a time.
+  const sayingRef = useRef(false);
   const snapshotsRef = useRef<{ blob: Blob; at: number }[]>([]);
   const snapshotTimerRef = useRef<number | null>(null);
   // The frame from when Echo last spoke about something, to compare against.
@@ -93,6 +98,8 @@ export default function Camera() {
   // Alarm phrases and commands loading at Start; Echo waits for them.
   const [voiceProgress, setVoiceProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  // How long the last written line took, for the team.
+  const [lineInfo, setLineInfo] = useState<string | null>(null);
   // Camera height above the ground, for distances. Set before Start and
   // remembered on this device; edits win when storage is blocked.
   const savedEyeHeightCm = useSyncExternalStore(noSubscribe, readEyeHeightCm, () => DEFAULT_EYE_HEIGHT_CM);
@@ -194,6 +201,7 @@ export default function Camera() {
     if (videoRef.current) videoRef.current.srcObject = null;
     stopSpeaking();
     saidRef.current = [];
+    sayingRef.current = false;
     historyRef.current = [];
     referenceRef.current = null;
     framesRef.current = [];
@@ -346,23 +354,75 @@ export default function Camera() {
         const gate = Math.max(course, footing, orient);
         historyRef.current = [...historyRef.current, { stop, distance, gate, at: now }].slice(-2);
       }
-      if (data.announcement) {
-        const text = toPhrase(data.announcement);
-        saidRef.current.push({
+      const a = data.announcement;
+      // The alarm stays instant and canned. Everything else is worded from
+      // the frame on the server, one line at a time.
+      const written = a?.kind === "warning" && !a.urgent;
+      if (a && !(written && sayingRef.current)) {
+        const text = toPhrase(a);
+        const entry = {
           text,
           at: Date.now(),
-          urgent: data.announcement.kind === "warning" && !!data.announcement.urgent,
-          advice: data.announcement.kind === "warning" ? data.announcement.advice : undefined,
-          key: announcementKey(data.announcement),
-          guided: data.announcement.kind === "warning" && !!data.announcement.guidance,
-        });
+          urgent: a.kind === "warning" && !!a.urgent,
+          advice: a.kind === "warning" ? a.advice : undefined,
+          key: announcementKey(a),
+          guided: a.kind === "warning" && !!a.guidance,
+        };
+        saidRef.current.push(entry);
         // Count repeat mentions of the same thing; a new thing starts over.
         const mentions = data.sameObject && reference ? reference.mentions + 1 : 1;
         referenceRef.current = { blob, text, at: Date.now(), mentions };
-        announce(data.announcement);
+        if (written) void say(blob, a, frameMotion ?? null, entry);
+        else announce(a);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Has the server word the warning from this frame and voice it. Falls back
+  // to the template if that fails; says nothing if the writer saw nothing
+  // worth saying, or the answer came back too late to still be true.
+  async function say(blob: Blob, warning: Warning, frameMotion: Motion | null, entry: { text: string }) {
+    sayingRef.current = true;
+    const loop = loopRef.current;
+    const startedAt = Date.now();
+    const form = new FormData();
+    form.append("frame", blob, "frame.jpg");
+    form.append("warning", JSON.stringify(warning));
+    if (frameMotion) form.append("motion", JSON.stringify(frameMotion));
+    if (cameraRef.current) form.append("camera", JSON.stringify(cameraRef.current));
+    form.append(
+      "recent",
+      JSON.stringify(
+        saidRef.current.filter((s) => s !== entry).map((s) => ({ text: s.text, secondsAgo: (startedAt - s.at) / 1000 })),
+      ),
+    );
+    try {
+      const res = await fetch("/api/say", { method: "POST", body: form, signal: AbortSignal.timeout(LINE_MAX_AGE_MS) });
+      if (!res.ok) throw new Error(`say HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const data: SayResponse = await res.json();
+      if (loop !== loopRef.current) return;
+      const tookMs = Date.now() - startedAt;
+      setLineInfo(
+        `line ${data.writer} ${data.lineMs} ms + voice ${data.ttsMs} ms${data.error ? ` (voice failed: ${data.error.slice(0, 80)})` : ""}`,
+      );
+      if (!data.text) {
+        entry.text = "(stayed quiet)";
+        return;
+      }
+      entry.text = data.text;
+      // An alarm since then wins, and a late line may no longer be true.
+      const alarmSince = saidRef.current.some((s) => s.urgent && s.at > startedAt);
+      if (alarmSince || tookMs > LINE_MAX_AGE_MS) return;
+      announce({ kind: "line", text: data.text, audio: data.audio, advice: warning.advice ?? "course" });
+    } catch (e) {
+      console.warn("Line writer failed, using the template", e);
+      if (loop !== loopRef.current) return;
+      setLineInfo(`line failed: ${String(e).slice(0, 120)}`);
+      if (Date.now() - startedAt < LINE_MAX_AGE_MS) announce(warning);
+    } finally {
+      sayingRef.current = false;
     }
   }
 
@@ -446,7 +506,7 @@ export default function Camera() {
               motionAllowed={motionAllowed}
               sent={sent}
               latencyMs={latencyMs}
-              note={voiceNote}
+              note={[voiceNote, lineInfo].filter(Boolean).join(" · ") || null}
             >
               {samples}
             </Details>

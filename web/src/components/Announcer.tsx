@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playAlarm } from "@/lib/alarm";
 import { toPhrase, toSegments, type Announcement } from "@/lib/announce";
-import { preload, speakAll, stopSpeaking, type Voice } from "@/lib/speech";
+import { preload, speakAll, speakClip, stopSpeaking, type Voice } from "@/lib/speech";
 import { severityOf, type Severity } from "@/components/Hud";
 
 type Props = {
@@ -33,7 +33,7 @@ export default function Announcer({ announcement, className }: Props) {
 
   useEffect(() => {
     if (!announcement) return;
-    const isWarning = announcement.kind === "warning";
+    const isWarning = announcement.kind !== "description";
     if (!isWarning && warningRef.current) return;
     const id = nextIdRef.current++;
     latestRef.current = id;
@@ -54,13 +54,9 @@ export default function Announcer({ announcement, className }: Props) {
         await playAlarm();
       }
       if (latestRef.current === id) {
-        const used = await speakAll(segments);
+        const a = announcement!;
+        const used = a.kind === "line" ? await speakClip(a.text, a.audio) : await speakAll(segments);
         if (latestRef.current === id && used !== "skipped") setVoice(used);
-      }
-      // A reminder about this thing often follows; have its words ready.
-      const a = announcement!;
-      if (a.kind === "warning" && !a.urgent && !a.reminder) {
-        void preload([toSegments({ ...a, reminder: true })[0]]);
       }
       if (warningRef.current === id) warningRef.current = 0;
       // Clear the screen once it has been said, unless something newer is up.
