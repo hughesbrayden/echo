@@ -608,6 +608,71 @@ html.is-deck .vs-box { gap: 10px; padding: clamp(18px, 2vw, 28px); }
 html.is-deck .vs-old li { padding: 9px 0; gap: 2px; }
 html.is-deck .vs-echo li { padding: 11px 0; }
 html.is-deck #different .chapter-head { margin-bottom: 16px; }
+/* 02: the demo is the show */
+.show { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: clamp(28px, 3.5vw, 56px); align-items: center; }
+.show-l, .show-r { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.show-l h2 { font-size: clamp(34px, 3.4vw, 52px); line-height: 1.05; }
+.show .film { margin: 0; display: block; }
+.show .film-frame { aspect-ratio: 720 / 1564; height: min(calc(100vh - 150px), 640px); width: auto; padding: 0; border-radius: 22px; background: #0B0D12; }
+.show .film-frame::before { display: none; }
+.show .film-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.howto { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: h; }
+.howto li { counter-increment: h; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; }
+.howto li::before { content: counter(h); grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; background: var(--voice-soft); color: var(--voice); font-family: var(--font-mono); font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.howto b { font-size: 16px; font-weight: 600; }
+.howto span { font-size: 14.5px; line-height: 1.45; color: var(--ink-2); }
+.said { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.said li { align-self: flex-start; font-size: 14.5px; padding: 7px 12px; border-radius: 12px 12px 12px 4px; background: var(--voice); color: #FFFFFF; }
+@media (max-width: 900px) { .show { grid-template-columns: minmax(0, 1fr); } .show .film-frame { height: auto; width: min(100%, 360px); margin: 0 auto; } }
+/* 04: half demo, half architecture and context */
+.built-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.built-head h2 { font-size: clamp(32px, 3vw, 46px); line-height: 1.05; }
+.built { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.built-l, .built-r { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.built-l .tabs { align-self: flex-start; margin-bottom: 0; }
+.built-l .con-body { grid-template-columns: minmax(0, 1fr) 236px; }
+.built-l .con-title .pill:nth-of-type(n+2) { display: none; }
+.built-l .view { min-height: 0; }
+.built-l .side section { padding: 8px 12px; gap: 5px; }
+.built-l .side .s-around { display: none; }
+.built-l .score { grid-template-columns: 62px minmax(0, 1fr) 34px; gap: 8px; }
+.built-l .outcome { padding: 6px 10px; }
+.built-l .strip-meta > span:last-child { display: none; }
+.built-l .trip { margin: 0; }
+.built-l .trip-bar { padding: 12px 16px; }
+.box-h { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.box-h span:first-child { color: var(--ink); }
+.arch, .ctx { padding: 0; overflow: hidden; }
+.arch-l { list-style: none; margin: 0; padding: 6px 0; }
+.arch-l li { display: grid; grid-template-columns: 26px 78px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 16px; font-size: 13.5px; }
+.arch-l li.hl { background: var(--voice-soft); }
+.arch-l .n { font-family: var(--font-mono); font-size: 11px; color: var(--voice); }
+.arch-l b { font-weight: 600; }
+.arch-l .d { color: var(--ink-2); min-width: 0; }
+.arch-l .t { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.ctx-in { display: flex; flex-direction: column; }
+.ctx-in > div { display: grid; grid-template-columns: 78px minmax(0, 1fr); column-gap: 12px; row-gap: 2px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+.ctx .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--voice); padding-top: 2px; }
+.ctx-in p { font-size: 12.5px; line-height: 1.4; color: var(--ink); font-family: var(--font-mono); letter-spacing: -0.01em; }
+.ctx-in .src { grid-column: 2; font-size: 11.5px; color: var(--ink-3); }
+.ctx-in .frames { display: flex; gap: 6px; flex-wrap: wrap; font-family: var(--font-sans); }
+.ctx-in .frames i, .ctx-out .qs i { font-style: normal; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg-3); color: var(--ink-2); }
+.ctx-in .frames i.now { background: var(--ink); color: #FFFFFF; }
+.ctx-out { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px 14px; }
+.ctx-out .qs { display: flex; gap: 5px; flex-wrap: wrap; }
+.ctx-out .qs i { font-family: var(--font-mono); font-size: 11.5px; }
+.ctx-out .qs i.g { background: var(--voice); color: #FFFFFF; }
+.ctx-out .dim { font-size: 13px; line-height: 1.45; }
+@media (max-width: 1000px) { .built { grid-template-columns: minmax(0, 1fr); } }
+
+.arch-l .n::before, .built .n::before { display: none !important; }
+.arch-l { padding: 4px 0; }
+.arch-l li { padding: 5px 16px; grid-template-columns: 22px 76px minmax(0, 1fr) auto; }
+.arch-l .d { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-in > div { padding: 7px 16px; }
+.ctx-out { padding: 8px 16px 12px; gap: 6px; }
+html.is-deck .built-head { margin-bottom: 12px; flex-direction: row; align-items: baseline; gap: 18px; }
+.built-r { gap: 12px; }
 
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
@@ -736,30 +801,70 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
 
   <section class="slide " id="echo" data-ch="echo" data-title="Echo">
     <div class="wrap slide-inner">
-      <div class="echo-grid">
-      <div class="echo-left">
-      <div class="chapter-head solo">
-        <div class="head-l">
+      <div class="show">
+        <div class="show-l">
           <span class="eyebrow"><b>02</b> The solution</span>
           <h2 id="h-echo">Echo, a lookout you can wear.</h2>
-          <p class="lede" style="max-width:60ch">Echo is an agentic navigation system built for video glasses. As you walk, it tells you what's in your way and how to get around it, and stays quiet the rest of the time.</p>
+          <p class="lede">Echo is an agentic navigation system built for video glasses. As you walk, it tells you what's in your way and how to get around it, and stays quiet the rest of the time.</p>
+        </div>
+        <div class="film" id="film">
+          <div class="card film-frame">
+            <video src="/media/echo-walk-01.mp4" poster="/media/echo-walk-01.jpg" controls playsinline preload="metadata" aria-label="Echo on a real walk, recorded on a phone standing in for the glasses"></video>
+          </div>
+        </div>
+        <div class="show-r">
+          <span class="eyebrow">How to use it</span>
+          <ol class="howto">
+            <li><b>Put it on.</b><span>Video glasses at eye level. For this walk, a phone stands in.</span></li>
+            <li><b>Start Echo.</b><span>Set your eye height, tap Start and allow the camera and motion sensors.</span></li>
+            <li><b>Walk.</b><span>Silence means nothing needs you. Two chimes and "Stop." mean wait.</span></li>
+          </ol>
+          <span class="eyebrow">Some of what it said</span>
+          <ul class="said">
+            <li>"Door, about 5 steps ahead."</li>
+            <li>"Person, about 5 steps ahead. Bear right."</li>
+            <li>"A step, about 4 steps ahead. Slow down."</li>
+          </ul>
         </div>
       </div>
-      <div class="film" id="film">
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <span class="eyebrow">The recorded walk</span>
-          <h3 class="film-h">One real walk, with every decision Echo made shown on top.</h3>
-          <p class="dim">Recorded with a phone standing in for the glasses.</p>
-        </div>
-        <div class="card film-video">
-          <video controls playsinline preload="metadata" poster="/media/echo-walk-01.jpg" aria-label="Screen recording of Echo running on a phone during a real walk">
-            <source src="/media/echo-walk-01.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-      </div>
+    </div>
+  </section>
 
-      <div class="echo-right">
+
+  <section class="slide beat" id="different" data-ch="different" data-title="What sets us apart">
+    <div class="wrap slide-inner">
+      <div class="chapter-head">
+        <div class="head-l">
+          <span class="eyebrow"><b>03</b> What sets us apart</span>
+          <h2 id="h-diff">Today you get effective or affordable. Echo is both.</h2>
+        </div>
+        <p class="hook">The hard part isn't seeing. <span>It's deciding when to speak.</span></p>
+      </div>
+      <div class="vs">
+        <div class="vs-box vs-old">
+          <span class="vs-k">Other solutions today</span>
+          <p class="vs-h">You pick one: effective, affordable or easy to wear.</p>
+          <ul><li><div class="vs-who"><b>Describer apps</b><span>Be My AI · Meta AI · ChatGPT live video</span></div><p>Affordable, but you have to stop and ask.</p><span class="vs-miss">Not effective while walking</span></li><li><div class="vs-who"><b>Obstacle wearables</b><span>Such as Biped</span></div><p>They warn you, but only with beeps, from a chest-mounted rig.</p><span class="vs-miss">Not seamless</span></li><li><div class="vs-who"><b>Dedicated devices</b><span>Specialist camera wearables</span></div><p>Capable, but they cost thousands of dollars. <span class="tag">Price check pending</span></p><span class="vs-miss">Not affordable</span></li></ul>
+        </div>
+        <div class="vs-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="vs-box vs-echo">
+          <span class="vs-k"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</span>
+          <p class="vs-h">All three, at once.</p>
+          <ul><li><i class="mk y" aria-hidden="true"></i><div><b>Effective</b><p>Speaks first, in words, only when it helps. "Bear left. Chair ahead."</p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Affordable</b><p>Runs on everyday video glasses for about a cent a minute. <span class="tag">Estimate</span></p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Seamless</b><p>Built into glasses. No rig, nothing to hold.</p></div></li></ul>
+        </div>
+      </div>
+      <p class="cmp-note">Our reading of each category, not a measurement.</p>
+    </div>
+  </section>
+
+  <section class="slide beat" id="built" data-ch="built" data-title="How we built it">
+    <div class="wrap slide-inner">
+      <div class="built-head">
+        <span class="eyebrow"><b>04</b> How we built it</span>
+        <h2 id="h-built">Five steps, twice a second.</h2>
+      </div>
+      <div class="built">
+        <div class="built-l">
       <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Live view</button><button type="button" role="tab" data-i="1"><span>2</span>From above</button></div>
       <div class="panes">
       <div class="pane on" data-tab="Live view">
@@ -885,61 +990,27 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
       </figure>
       </div>
       </div>
-      </div>
-      </div>
-
-    </div>
-  </section>
-
-
-  <section class="slide beat" id="different" data-ch="different" data-title="What sets us apart">
-    <div class="wrap slide-inner">
-      <div class="chapter-head">
-        <div class="head-l">
-          <span class="eyebrow"><b>03</b> What sets us apart</span>
-          <h2 id="h-diff">Today you get effective or affordable. Echo is both.</h2>
         </div>
-        <p class="hook">The hard part isn't seeing. <span>It's deciding when to speak.</span></p>
-      </div>
-      <div class="vs">
-        <div class="vs-box vs-old">
-          <span class="vs-k">Other solutions today</span>
-          <p class="vs-h">You pick one: effective, affordable or easy to wear.</p>
-          <ul><li><div class="vs-who"><b>Describer apps</b><span>Be My AI · Meta AI · ChatGPT live video</span></div><p>Affordable, but you have to stop and ask.</p><span class="vs-miss">Not effective while walking</span></li><li><div class="vs-who"><b>Obstacle wearables</b><span>Such as Biped</span></div><p>They warn you, but only with beeps, from a chest-mounted rig.</p><span class="vs-miss">Not seamless</span></li><li><div class="vs-who"><b>Dedicated devices</b><span>Specialist camera wearables</span></div><p>Capable, but they cost thousands of dollars. <span class="tag">Price check pending</span></p><span class="vs-miss">Not affordable</span></li></ul>
-        </div>
-        <div class="vs-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-        <div class="vs-box vs-echo">
-          <span class="vs-k"><span class="mark" aria-hidden="true"><i></i><i></i><i class="v"></i><i></i><i class="a"></i></span>Echo</span>
-          <p class="vs-h">All three, at once.</p>
-          <ul><li><i class="mk y" aria-hidden="true"></i><div><b>Effective</b><p>Speaks first, in words, only when it helps. "Bear left. Chair ahead."</p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Affordable</b><p>Runs on everyday video glasses for about a cent a minute. <span class="tag">Estimate</span></p></div></li><li><i class="mk y" aria-hidden="true"></i><div><b>Seamless</b><p>Built into glasses. No rig, nothing to hold.</p></div></li></ul>
+        <div class="built-r">
+          <div class="card arch">
+            <div class="box-h"><span>Architecture</span><span>Every look, twice a second</span></div>
+            <ol class="arch-l"><li><span class="n">01</span><b>See</b><span class="d">Two frames, now and 0.5 s ago</span><span class="t">Browser camera</span></li><li><span class="n">02</span><b>Remember</b><span class="d">Recent words, walking, head tilt</span><span class="t">Motion sensors</span></li><li class="hl"><span class="n">03</span><b>Decide</b><span class="d">Questions answered as numbers</span><span class="t">OpenAI Decisions API</span></li><li><span class="n">04</span><b>Route</b><span class="d">Thresholds pick what to say</span><span class="t">Vercel function</span></li><li><span class="n">05</span><b>Speak</b><span class="d">Natural voice, phone voice fallback</span><span class="t">Gemini TTS</span></li></ol>
+          </div>
+          <div class="card ctx">
+            <div class="box-h"><span>Context design</span><span>What the decision model sees</span></div>
+            <div class="ctx-in">
+              <div><span class="k">Scene</span><p>"Head-mounted camera on a blind pedestrian who is walking. Camera tilted about 10° down. Walking about 1.1 m/s."</p></div>
+              <div><span class="k">Frames</span><p class="frames"><i>Last spoken about</i><i>0.5 s ago</i><i class="now">Newest, the one every question is about</i></p></div>
+              <div><span class="k">Transcript</span><p>"What Echo said recently: Course: 'Door, about 5 steps ahead.' 3s ago." Last 10 s.</p></div>
+            </div>
+            <div class="ctx-out">
+              <span class="k">It answers</span>
+              <p class="qs"><i class="g">stop</i><i class="g">course</i><i class="g">footing</i><i class="g">orient</i><i>new in view</i><i>subject</i><i>direction</i><i>distance</i><i>room left · right</i></p>
+              <p class="dim">Probabilities, not sentences. Plain code turns them into silence, words or the alarm, and the alarm waits for two frames to agree.</p>
+            </div>
+          </div>
         </div>
       </div>
-      <p class="cmp-note">Our reading of each category, not a measurement.</p>
-    </div>
-  </section>
-
-  <section class="slide beat" id="built" data-ch="built" data-title="How we built it">
-    <div class="wrap slide-inner">
-      <div class="chapter-head">
-        <div class="head-l">
-          <span class="eyebrow"><b>04</b> How we built it</span>
-          <h2 id="h-built">Five steps, twice a second.</h2>
-        </div>
-        <p class="lede">The phone sees and speaks. A decision model answers a few navigation questions about each look, and plain code turns the answers into silence, words or the alarm.</p>
-      </div>
-      <ol class="steps" aria-label="Pipeline"><li class=""><span class="n">01 See</span><b>Two frames</b><p>Now and 0.5 s ago, so it can see what moves.</p><span class="t">Browser camera</span></li><li class=""><span class="n">02 Remember</span><b>Context</b><p>What Echo just said, walking, head tilt.</p><span class="t">Motion sensors</span></li><li class="hl"><span class="n">03 Decide</span><b>Four gates</b><p>Stop, course, footing, orient. Then what and where.</p><span class="t">OpenAI Decisions API</span></li><li class=""><span class="n">04 Route</span><b>Thresholds</b><p>Plain code. Alarms need two frames to agree.</p><span class="t">Vercel function</span></li><li class=""><span class="n">05 Speak</span><b>Voice or tone</b><p>Natural voice, phone voice after 0.4 s.</p><span class="t">Gemini TTS · Web Audio</span><span class="out"><i class="s">Silence</i><i class="w">Words</i><i class="a">Alarm</i></span></li></ol>
-      <div class="why">
-        <div class="why-t">
-          <span class="eyebrow">Why a decision model</span>
-          <p class="why-h">A chat model gives you a sentence. <span>A decision model gives you a number you can tune.</span></p>
-          <p class="dim">Each answer is a probability, so "should Echo speak?" becomes a threshold we test on recorded walks, not a prompt we hope behaves.</p>
-        </div>
-        <div class="why-n">
-          <div><b>0.3 to 1 s</b><span>Per decision, mostly network. Late answers are dropped, not spoken late.</span></div>
-          <div><b>About 1¢</b><span>Per minute of walking for the decisions. <span class="tag">Estimate</span></span></div>
-        </div>
-      </div>
-      <p class="limits-line">Echo is an early heads-up, not collision avoidance. It works alongside a cane, never instead of one, and it never says a path is clear.</p>
     </div>
   </section>
 
