@@ -5,7 +5,7 @@
 // The questions and thresholds are v0 guesses: tuning them is the main work.
 // decide() runs on the server; the phone imports only the phrase helpers.
 
-import type { Announcement, Distance, Guidance, Warning } from "@/lib/announce";
+import { toPhrase, type Announcement, type Distance, type Guidance, type Warning } from "@/lib/announce";
 import { describeGeometry, groundDistanceM, type CameraSetup } from "@/lib/geometry";
 import type { Motion } from "@/lib/motion";
 
@@ -119,15 +119,15 @@ export const THRESHOLDS = {
   // Frames older than this don't count toward confirming.
   alarmConfirmWindowS: 2.5,
   // Any two alarms are at least this far apart.
-  alarmGapS: 4,
+  alarmGapS: 8,
   // Words wait this long after Echo last spoke, so it never talks over itself.
-  wordsGapS: 3,
+  wordsGapS: 4,
   // Above this, the main thing is the one Echo already spoke about.
   sameObject: 0.7,
   // A hazard or distance score that rises this much over the last few frames
   // means it is getting closer, so the alarm sounds again even for something
   // already mentioned.
-  approachRise: 0.15,
+  approachRise: 0.25,
   approachDistanceRise: 0.5,
   // Distance score cut-offs for the spoken words.
   distanceClose: 1.5,
@@ -158,13 +158,16 @@ export const THRESHOLDS = {
   // Said once the way is clear within this long after a go-around command...
   clearAfterGuidanceS: 15,
   // ...and otherwise after this long of quiet while walking.
-  keepWalkingS: 20,
+  keepWalkingS: 45,
   // Something still in view gets a spoken reminder after this long, doubling
   // each time up to the max, and only while the wearer is walking.
   reminderFirstS: 15,
   reminderMaxS: 60,
   // A different thing with the exact same phrase still waits this long.
-  samePhraseS: 10,
+  samePhraseS: 20,
+  // Something that won't move, right in front, isn't named again in "right in
+  // front of you" words for this long.
+  closeRepeatS: 10,
 };
 
 function overAlarmLine(a: { hazard_close: number; urgency: number }): boolean {
@@ -433,8 +436,8 @@ export function stubAnswers(hasReference: boolean): Answers {
     latencyMs: 0,
     stub: true,
   };
-  if (roll < 0.05) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead", distance: 1.9 };
-  if (roll < 0.15) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "chair", direction: "right", distance: 1.1 };
+  if (roll < 0.01) return { ...base, hazard_close: 0.92, worth_saying: 0.9, urgency: 2.8, subject: "person", direction: "ahead", distance: 1.9 };
+  if (roll < 0.05) return { ...base, hazard_close: 0.4, worth_saying: 0.8, urgency: 1.6, subject: "chair", direction: "right", distance: 1.1 };
   return { ...base, hazard_close: 0.05, worth_saying: 0.1, urgency: 0.2, subject: "other", direction: "ahead", distance: 0.2 };
 }
 
@@ -642,6 +645,19 @@ export function toAnnouncement(
     return reference.secondsAgo >= wait;
   };
 
+  // Only things that move get the alarm tone and "Stop.": a person, bike or
+  // vehicle can step into the path faster than words. A wall or chair stays
+  // put, so it gets plain words, and only when the wearer is walking into it.
+  if (overAlarmLine(a) && !MOVES.has(a.subject)) {
+    if (!motion?.walking || a.direction !== "ahead" || lookingAway) return null;
+    const confirmed = 1 + window.filter(overAlarmLine).length >= THRESHOLDS.alarmConfirmFrames;
+    if (!confirmed || lastSpokeS < THRESHOLDS.wordsGapS) return null;
+    const closeWarning: Warning = { ...warning, distance: "close", steps: undefined };
+    const phrase = toPhrase(closeWarning);
+    const said = recent.some((r) => r.text === phrase && r.secondsAgo < THRESHOLDS.closeRepeatS);
+    return said ? null : closeWarning;
+  }
+
   if (overAlarmLine(a)) {
     const confirmed = 1 + window.filter(overAlarmLine).length >= THRESHOLDS.alarmConfirmFrames;
     if (!confirmed || lastAlarmS < THRESHOLDS.alarmGapS) return null;
@@ -667,8 +683,15 @@ export function toAnnouncement(
   const groundSubject = a.subject === "stairs" || a.subject === "curb";
   if (groundSubject && a.ground_change >= THRESHOLDS.groundChange) return null;
 
+  // Words are for things in the way: ahead and within a few steps, close
+  // enough to brush, or moving. Landmarks off to the side ("Bench, on your
+  // left") are left to the narrator, and "Something" is never worth saying.
+  const inTheWay =
+    (a.direction === "ahead" && distance !== "far") || distance === "close" || MOVES.has(a.subject);
+
   const words = (): Announcement | null => {
     if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
+    if (!inTheWay || a.subject === "other") return null;
     // Head turns sweep things through view; let them settle before speaking.
     if (motion?.turning) return null;
     if (same) return reminderDue() ? reminder : null;
