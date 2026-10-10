@@ -34,12 +34,16 @@ def swap(old, new, text):
     return text.replace(old, new, 1)
 
 
-# Phones are where the demo runs, so the button stays in the nav at every width.
-css = swap(".nav-cta { display: none; }", ".nav-cta { padding: 7px 12px; font-size: 13px; }", css)
+# Phones are where the demo runs, so the site nav stays at every width and the chapter links give way.
+css = swap(".nav-cta { display: none; }", ".chapters { display: none; }", css)
 css += """
 /* Site additions: the recorded walk, the Live demo button and the closing call to action. */
-.nav-cta { display: inline-flex; align-items: center; gap: 8px; }
-.nav-cta .live, .cta-btn .live { width: 7px; height: 7px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.22); }
+.site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
+.site a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.site a:hover { color: var(--ink); }
+.site a[aria-current="page"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
+.site a[href="/demo"] { background: var(--ink); color: #FFFFFF; }
+.site .live, .cta-btn .live { width: 7px; height: 7px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.22); }
 .film-video { position: relative; justify-self: center; width: min(100%, 340px); aspect-ratio: 720 / 1564; border-radius: 28px; overflow: hidden; background: var(--ink); }
 .film-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cta { margin-top: clamp(112px, 13vw, 180px); padding: clamp(32px, 5vw, 64px); border-radius: 24px; background: var(--ink); color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
@@ -52,7 +56,8 @@ css += """
 
 body = swap(
     '<a class="nav-cta" href="#film">Watch the walk</a>',
-    '<a class="nav-cta" href="/demo"><span class="live" aria-hidden="true"></span>Live demo</a>',
+    '<nav class="site" aria-label="Site"><a href="/" aria-current="page">Story</a>'
+    '<a href="/demo"><span class="live" aria-hidden="true"></span>Live demo</a></nav>',
     body,
 )
 body = swap(' <span class="tag">Video coming</span>', "", body)
