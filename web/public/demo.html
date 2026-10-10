@@ -674,6 +674,56 @@ html.is-deck #different .chapter-head { margin-bottom: 16px; }
 html.is-deck .built-head { margin-bottom: 12px; flex-direction: row; align-items: baseline; gap: 18px; }
 .built-r { gap: 12px; }
 
+.arch-svg { display: block; width: 100%; height: auto; padding: 8px 12px 10px; box-sizing: border-box; }
+.a-node { fill: #FFFFFF; stroke: var(--line-strong); stroke-width: 1; }
+.a-node.hl { fill: var(--voice-soft); stroke: var(--voice); }
+.a-grp { fill: var(--bg-2); stroke: var(--line); stroke-dasharray: 4 4; }
+.a-t { font-family: var(--font-sans); font-size: 15px; font-weight: 600; fill: var(--ink); }
+.a-t.sm { font-size: 13.5px; font-family: var(--font-mono); font-weight: 500; }
+.a-s { font-family: var(--font-sans); font-size: 12px; fill: var(--ink-2); }
+.a-m { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; fill: var(--ink-3); }
+.a-e { font-family: var(--font-mono); font-size: 9.5px; fill: var(--ink-3); }
+.a-l { stroke: #98A2B3; stroke-width: 1.5; fill: none; }
+.ctx3 { display: grid; grid-template-columns: 1.25fr 1fr 1fr; }
+.ctx3 > div { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; min-width: 0; }
+.ctx3 > div + div { border-left: 1px solid var(--line); }
+.ctx3 ul { margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.35; color: var(--ink); }
+.ctx3 .qs, .ctx3 .out { display: flex; gap: 4px; flex-wrap: wrap; }
+.ctx3 .qs i, .ctx3 .out i { font-style: normal; font-family: var(--font-mono); font-size: 11.5px; padding: 3px 8px; border-radius: 999px; background: var(--bg-3); color: var(--ink-2); }
+.ctx3 .qs i.g, .ctx3 .out i.w { background: var(--voice); color: #FFFFFF; }
+.ctx3 .out i.a { background: var(--alarm); color: #FFFFFF; }
+.ctx3 .sm { font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+
+.ctx-svg { display: block; width: 100%; height: auto; padding: 8px 12px 10px; box-sizing: border-box; }
+.c-k { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; fill: var(--voice); }
+.c-m { font-family: var(--font-mono); font-size: 9.5px; fill: var(--ink-3); }
+.th rect:first-child { fill: #E6E9EE; stroke: var(--line-strong); }
+.th.now rect:first-child { fill: #DDE1E7; stroke: var(--ink); stroke-width: 1.5; }
+.th-l { fill: none; stroke: #B4BCC8; stroke-width: 1; }
+.th-o { fill: #8A6D3B; }
+.th.now .c-m { fill: var(--ink); font-weight: 600; }
+.c-card { fill: #FFFFFF; stroke: var(--line-strong); }
+.c-s { font-family: var(--font-sans); font-size: 11.5px; fill: var(--ink-2); }
+.c-bub { fill: var(--voice); }
+.c-w { font-family: var(--font-sans); font-size: 11.5px; fill: #FFFFFF; }
+.c-l { stroke: #98A2B3; stroke-width: 1.5; fill: none; }
+.c-df { fill: var(--voice-soft); stroke: var(--voice); stroke-width: 1.5; }
+.c-dt { font-family: var(--font-sans); font-size: 14px; font-weight: 600; fill: var(--ink); }
+.c-gn { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-2); }
+.c-gb { fill: #FFFFFF; }
+.c-gf { fill: var(--voice); }
+.c-gv { font-family: var(--font-mono); font-size: 11px; fill: var(--ink); }
+.c-ga { font-family: var(--font-sans); font-size: 12px; font-weight: 500; fill: var(--ink); }
+.c-sep { stroke: rgba(47, 91, 234, 0.25); }
+.c-o { fill: var(--bg-3); }
+.c-o.w { fill: var(--voice); }
+.c-o.a { fill: var(--alarm); }
+.c-ot { font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; fill: var(--ink-2); }
+.c-o.a + .c-ot, .c-ot.w { fill: #FFFFFF; }
+
+.a-l.ret { stroke-dasharray: 4 4; }
+.a-e { font-size: 11px !important; }
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
