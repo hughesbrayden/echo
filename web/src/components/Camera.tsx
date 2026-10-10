@@ -410,6 +410,11 @@ export default function Camera() {
             {motion.cadence} steps/s
           </p>
         )}
+        {running && answers?.stub && (
+          <p className="rounded bg-red-600 px-2 py-1 text-sm font-bold text-white">
+            FAKE ANSWERS: OPENAI_API_KEY isn&apos;t set for this deployment.
+          </p>
+        )}
         {running && answers && (
           <p className="font-mono text-sm">
             stop {answers.stop.toFixed(2)} · course {answers.course.toFixed(2)} · footing{" "}
