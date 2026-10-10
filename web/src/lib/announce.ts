@@ -4,8 +4,9 @@
 export type Direction = "left" | "ahead" | "right";
 export type Distance = "close" | "near" | "far";
 // Which way to go: around an object on that side, keep away from something
-// beside the wearer, or wait when there is no clear way around.
-export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait";
+// beside the wearer, wait when there is no clear way around, or slow down
+// for stairs and curbs.
+export type Guidance = "left" | "right" | "keep_left" | "keep_right" | "wait" | "slow";
 
 export type Warning = {
   kind: "warning";
@@ -60,13 +61,15 @@ function command(g: Guidance, close: boolean): string {
       return "Keep right.";
     case "wait":
       return "No clear way around. Wait.";
+    case "slow":
+      return "Slow down.";
   }
 }
 
 // Every command Echo can give, so the phone can preload them.
 export function commandSegments(): Segment[] {
   const texts = new Set<string>();
-  for (const g of ["left", "right", "keep_left", "keep_right", "wait"] as const) {
+  for (const g of ["left", "right", "keep_left", "keep_right", "wait", "slow"] as const) {
     texts.add(command(g, true));
     texts.add(command(g, false));
   }

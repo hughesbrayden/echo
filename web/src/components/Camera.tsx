@@ -51,7 +51,9 @@ export default function Camera() {
   const saidRef = useRef<{ text: string; at: number; urgent: boolean; key?: string }[]>([]);
   // The frame from when Echo last spoke about something, to compare against.
   const referenceRef = useRef<{ blob: Blob; text: string; at: number; mentions: number } | null>(null);
-  const historyRef = useRef<{ hazard_close: number; urgency: number; distance: number; at: number }[]>([]);
+  const historyRef = useRef<
+    { hazard_close: number; urgency: number; distance: number; worth_saying: number; at: number }[]
+  >([]);
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +170,7 @@ export default function Camera() {
           hazard_close: h.hazard_close,
           urgency: h.urgency,
           distance: h.distance,
+          worth_saying: h.worth_saying,
           secondsAgo: (now - h.at) / 1000,
         })),
       ),
@@ -195,8 +198,11 @@ export default function Camera() {
       setSent((n) => n + 1);
       setAnswers(data.answers ?? null);
       if (data.answers) {
-        const { hazard_close, urgency, distance } = data.answers;
-        historyRef.current = [...historyRef.current, { hazard_close, urgency, distance, at: now }].slice(-2);
+        const { hazard_close, urgency, distance, worth_saying } = data.answers;
+        historyRef.current = [
+          ...historyRef.current,
+          { hazard_close, urgency, distance, worth_saying, at: now },
+        ].slice(-2);
       }
       if (data.announcement) {
         const text = toPhrase(data.announcement);

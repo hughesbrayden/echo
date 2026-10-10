@@ -66,7 +66,13 @@ export type Recent = {
 };
 
 // Answers from the frames just before this one, newest last.
-export type Past = { hazard_close: number; urgency: number; distance: number; secondsAgo: number };
+export type Past = {
+  hazard_close: number;
+  urgency: number;
+  distance: number;
+  worth_saying?: number;
+  secondsAgo: number;
+};
 
 // The frame from when Echo last spoke about something, and how often it has
 // mentioned that thing in a row.
@@ -85,6 +91,17 @@ export const THRESHOLDS = {
   alarmGapS: 4,
   // Words wait this long after Echo last spoke, so it never talks over itself.
   wordsGapS: 3,
+  // After that, the bar for words starts high and eases back down to
+  // `words` over this many seconds. Echo can still speak soon after, but
+  // only about something the model is sure of. Alarms skip the bar.
+  wordsBarRecent: 0.9,
+  wordsBarEaseS: 15,
+  // Words need the frame before to agree (worth_saying at least this), so one
+  // odd frame can't make Echo talk. Caution-level things skip the wait.
+  wordsConfirm: 0.5,
+  wordsSkipConfirmUrgency: 2,
+  // Below "notice", nothing is worth saying, whatever worth_saying says.
+  wordsMinUrgency: 1,
   // Above this, the main thing is the one Echo already spoke about.
   sameObject: 0.7,
   // A hazard or distance score that rises this much over the last few frames
@@ -109,6 +126,11 @@ function overAlarmLine(a: { hazard_close: number; urgency: number }): boolean {
   return a.hazard_close >= THRESHOLDS.alarmHazard && a.urgency >= THRESHOLDS.alarmUrgency;
 }
 
+// Every question after the first three is about the same thing, so the
+// subject, direction, distance and way around always describe one object.
+const TARGET =
+  "the main thing: whatever the wearer is most likely to walk into, trip on or step off next, or failing that the most useful landmark nearby (a door, stairs, a curb)";
+
 const QUESTIONS = [
   {
     type: "predicate",
@@ -120,7 +142,7 @@ const QUESTIONS = [
     type: "predicate",
     name: "worth_saying",
     instructions:
-      "Something in view is new compared to what was recently said, and a blind pedestrian would want to know it right now.",
+      "Something in or near the walking path, or a door, stairs or curb the wearer is heading toward, is worth calling out to a blind pedestrian right now. Things already in 'Recently said' only count if they are now clearly closer or in the way. Background objects, things far off to the side, and people walking away do not count.",
   },
   {
     type: "score",
@@ -136,19 +158,19 @@ const QUESTIONS = [
   {
     type: "choice",
     name: "subject",
-    instructions: "The single most important thing worth mentioning.",
+    instructions: `What is ${TARGET}?`,
     choices: SUBJECTS.map((value) => ({ value })),
   },
   {
     type: "choice",
     name: "direction",
-    instructions: "Where that thing is relative to where the camera faces.",
+    instructions: `Where is ${TARGET}, relative to the center of the image?`,
     choices: DIRECTIONS.map((value) => ({ value })),
   },
   {
     type: "score",
     name: "distance",
-    instructions: "How far that thing is from the wearer.",
+    instructions: `How far is ${TARGET} from the wearer?`,
     levels: [
       { label: "far", description: "More than about 3 meters away" },
       { label: "near", description: "About 1 to 3 meters away" },
@@ -171,7 +193,10 @@ const QUESTIONS = [
 
 function contextText(recent: Recent[], motion: Motion | null): string {
   recent = recent.filter((r) => r.secondsAgo < 30).slice(-5);
-  const lines = ["Head-mounted camera worn by a blind pedestrian."];
+  const lines = [
+    "Head-mounted camera worn by a blind pedestrian.",
+    "The image center is where they face; the walking path is the floor in the lower middle of the image.",
+  ];
   if (motion) {
     lines.push(`The wearer is ${motion.walking ? "walking" : "standing still"}${motion.turning ? " and turning their head" : ""}.`);
   }
@@ -333,10 +358,14 @@ const GO_AROUND = new Set<Answers["subject"]>([
   "other_obstacle",
 ]);
 
+const DROPS = new Set<Answers["subject"]>(["stairs", "curb"]);
+
 // Which way to go. Only for something in the path that is near or close, or
 // something beside the wearer that is close enough to brush. Never claims the
 // way is clear: it points to the side with more room.
 function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance | undefined {
+  // Stairs and curbs can't be walked around; the useful word is to slow down.
+  if (DROPS.has(a.subject)) return !urgent && a.direction === "ahead" && distance !== "far" ? "slow" : undefined;
   if (!GO_AROUND.has(a.subject)) return undefined;
   const close = urgent || distance === "close";
   if (a.direction !== "ahead") {
@@ -351,6 +380,14 @@ function toGuidance(a: Answers, distance: Distance, urgent: boolean): Guidance |
 
 export function isSameObject(a: Answers): boolean {
   return a.same_as_last !== null && a.same_as_last >= THRESHOLDS.sameObject;
+}
+
+// How sure the model must be before Echo speaks words: high right after it
+// last spoke, easing down to the base line. A soft cooldown, not a hard one.
+function wordsBar(lastSpokeS: number): number {
+  const t = (lastSpokeS - THRESHOLDS.wordsGapS) / (THRESHOLDS.wordsBarEaseS - THRESHOLDS.wordsGapS);
+  if (!(t < 1)) return THRESHOLDS.words;
+  return THRESHOLDS.wordsBarRecent - (THRESHOLDS.wordsBarRecent - THRESHOLDS.words) * Math.max(0, t);
 }
 
 // Routes answers to silence, words, or the alarm. Templates, not an LLM.
@@ -403,7 +440,18 @@ export function toAnnouncement(
     return reminderDue() ? reminder : null;
   }
 
-  if (a.worth_saying < THRESHOLDS.words || lastSpokeS < THRESHOLDS.wordsGapS) return null;
+  if (lastSpokeS < THRESHOLDS.wordsGapS) return null;
+  if (a.worth_saying < wordsBar(lastSpokeS)) return null;
+  // Nothing nameable, nothing pressing, or far off to the side: not worth words.
+  if (a.urgency < THRESHOLDS.wordsMinUrgency) return null;
+  if (a.subject === "other" && a.hazard_close < THRESHOLDS.alarmHazard) return null;
+  if (distance === "far" && a.direction !== "ahead") return null;
+  // One frame isn't enough unless it is already at caution.
+  const prev = history[history.length - 1];
+  const confirmed =
+    a.urgency >= THRESHOLDS.wordsSkipConfirmUrgency ||
+    (prev?.worth_saying !== undefined && prev.worth_saying >= THRESHOLDS.wordsConfirm);
+  if (!confirmed) return null;
   // Head turns sweep things through view; let them settle before speaking.
   if (motion?.turning) return null;
   if (same) return reminderDue() ? reminder : null;
