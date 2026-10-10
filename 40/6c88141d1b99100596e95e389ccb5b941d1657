@@ -1,0 +1,27 @@
+web/src/components/Announcer.tsx
+  s_b87fa4f29fcc9c::t_9a3735c330358c 6,32-33,51,61-64,104
+web/src/lib/speech.ts
+  s_b87fa4f29fcc9c::t_9a3735c330358c 4,6-7,11,31-41,43,64,69,71,73,77,80,84-85,144,152-155,170-182,185-187,242,245-249,255-258
+web/src/lib/audio.ts
+  s_b87fa4f29fcc9c::t_309fbda4ef3d4a 1,3-7,9,12-17,20-23,25-26,30-34,45-95
+web/src/lib/alarm.ts
+  s_b87fa4f29fcc9c::t_ea2d7332456b82 1-2,4,14-15,17,19-22,24-31,33-35,37-44
+web/src/components/Camera.tsx
+  s_b87fa4f29fcc9c::t_485e5788d80a18 25-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "406c88141d1b99100596e95e389ccb5b941d1657",
+  "prompts": {},
+  "sessions": {
+    "s_b87fa4f29fcc9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e4f670c-92b8-42e1-b9c9-236f427e50ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sethian Kho <gabriel.d.kho@gmail.com>"
+    }
+  }
+}
