@@ -390,6 +390,25 @@ export default function Camera() {
 
   const voicePct = voiceProgress ? Math.round((voiceProgress.loaded / Math.max(1, voiceProgress.total)) * 100) : 0;
 
+  const samples = (
+    <div className="flex items-center gap-2">
+      {TESTS.map((t) => (
+        <button
+          key={t.label}
+          type="button"
+          onClick={() => {
+            unlockAudio();
+            announce({ ...t.announcement });
+          }}
+          aria-label={`Play a sample: ${t.label}`}
+          className="h-11 flex-1 rounded-full bg-white/8 text-sm font-medium text-white/85 transition active:scale-95 active:bg-white/15"
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <main className="relative flex h-dvh flex-1 flex-col overflow-hidden bg-[var(--background)] select-none">
       <video
@@ -402,66 +421,55 @@ export default function Camera() {
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Soften the edges so the words read on any scene. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/50 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
-
-      {running && <FocusHalo answers={answers} />}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       {alarms > 0 && <StopGlow key={alarms} />}
 
-      <div className="relative z-10 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      {/* Three bands that never overlap: header, open view, footer. */}
+      <header className="relative z-10 flex flex-col gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <TopBar live={running} motion={motion} demo={!!answers?.stub} />
-      </div>
-
-      {!running && (
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 text-center">
-          <div className="relative flex h-36 w-36 items-center justify-center">
-            <span className="echo-ripple absolute inset-0 rounded-full" />
-            <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:1.2s]" />
-            <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:2.4s]" />
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--echo-accent)]/15">
-              <EchoMark className="h-10 w-10 text-[var(--echo-accent)]" />
-            </span>
-          </div>
-          <h1 className="mt-8 text-3xl font-semibold">A calm voice for the way ahead</h1>
-          <p className="mt-3 max-w-xs text-lg leading-relaxed text-white/65">
-            Echo stays quiet while you walk, and speaks up only when something is in your way.
-          </p>
-        </div>
-      )}
-
-      <div className="relative z-10 mt-auto flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {running && showDetails && (
-          <Details
-            answers={answers}
-            motion={motion}
-            motionAllowed={motionAllowed}
-            sent={sent}
-            latencyMs={latencyMs}
-          />
+          <div className="max-h-[55dvh] overflow-y-auto rounded-3xl">
+            <Details
+              answers={answers}
+              motion={motion}
+              motionAllowed={motionAllowed}
+              sent={sent}
+              latencyMs={latencyMs}
+              note={voiceNote}
+            >
+              {samples}
+            </Details>
+          </div>
         )}
-        {running && <AroundYou narration={narration} />}
-        <Announcer announcement={announcement} />
+      </header>
 
+      <section className="relative min-h-0 flex-1" aria-hidden={running}>
+        {running && <FocusHalo answers={answers} />}
+        {!running && (
+          <div className="flex h-full flex-col items-center justify-center overflow-hidden px-8 text-center">
+            <div className="relative flex h-32 w-32 shrink-0 items-center justify-center [@media(max-height:700px)]:h-24 [@media(max-height:700px)]:w-24">
+              <span className="echo-ripple absolute inset-0 rounded-full" />
+              <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:1.2s]" />
+              <span className="echo-ripple absolute inset-0 rounded-full [animation-delay:2.4s]" />
+              <span className="flex h-[62%] w-[62%] items-center justify-center rounded-full bg-[var(--echo-accent)]/15">
+                <EchoMark className="h-1/2 w-1/2 text-[var(--echo-accent)]" />
+              </span>
+            </div>
+            <h1 className="mt-7 text-3xl font-semibold [@media(max-height:700px)]:mt-5 [@media(max-height:700px)]:text-2xl">A calm voice for the way ahead</h1>
+            <p className="mt-3 max-w-xs text-lg leading-relaxed text-white/65 [@media(max-height:700px)]:text-base">
+              Echo stays quiet while you walk, and speaks up only when something is in your way.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <footer className="relative z-10 flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {running && !showDetails && <AroundYou narration={narration} />}
+        <Announcer announcement={announcement} />
         {error && <p className="rounded-2xl bg-[var(--echo-stop)]/15 px-4 py-3 text-sm text-white/90">{error}</p>}
 
         <div className="echo-glass flex flex-col gap-3 rounded-[2rem] p-3">
-          <div className="flex items-center gap-2">
-            {TESTS.map((t) => (
-              <button
-                key={t.label}
-                type="button"
-                onClick={() => {
-                  unlockAudio();
-                  announce({ ...t.announcement });
-                }}
-                aria-label={`Play a sample: ${t.label}`}
-                className="h-11 flex-1 rounded-full bg-white/8 text-sm font-medium text-white/85 transition active:scale-95 active:bg-white/15"
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
           {(status === "idle" || status === "error") && (
             <label className="flex items-center justify-between px-2 text-base text-white/85">
               Eye height
@@ -480,13 +488,12 @@ export default function Camera() {
               </span>
             </label>
           )}
-
           <div className="flex gap-2">
             <button
               type="button"
               onClick={running ? stop : start}
               disabled={status === "starting"}
-              className={`relative h-16 flex-1 overflow-hidden rounded-full text-xl font-semibold transition active:scale-[0.98] disabled:opacity-90 ${
+              className={`relative h-14 flex-1 overflow-hidden rounded-full text-lg font-semibold transition active:scale-[0.98] disabled:opacity-90 ${
                 running ? "bg-white/12 text-white" : "bg-[var(--echo-accent)] text-neutral-900"
               }`}
             >
@@ -505,7 +512,7 @@ export default function Camera() {
                 type="button"
                 onClick={() => setShowDetails((v) => !v)}
                 aria-pressed={showDetails}
-                className={`h-16 rounded-full px-5 text-sm font-medium transition active:scale-95 ${
+                className={`h-14 rounded-full px-5 text-sm font-medium transition active:scale-95 ${
                   showDetails ? "bg-white text-neutral-900" : "bg-white/12 text-white/80"
                 }`}
               >
@@ -514,8 +521,7 @@ export default function Camera() {
             )}
           </div>
         </div>
-        {voiceNote && <p className="truncate px-2 text-xs text-white/45" title={voiceNote}>{voiceNote}</p>}
-      </div>
+      </footer>
     </main>
   );
 }

@@ -42,7 +42,7 @@ export function TopBar({ live, motion, demo }: { live: boolean; motion: Motion |
       </div>
       <div className="flex items-center gap-2">
         {live && motion && (
-          <span className="echo-glass rounded-full px-3 py-2 text-sm text-white/85">
+          <span className="echo-glass hidden rounded-full px-3 py-2 text-sm text-white/85 min-[370px]:inline">
             {motion.walking ? "Walking" : "Standing"}
           </span>
         )}
@@ -61,7 +61,7 @@ export function TopBar({ live, motion, demo }: { live: boolean; motion: Motion |
 export function FocusHalo({ answers }: { answers: Answers | null | undefined }) {
   if (!answers || answers.subject === "other" || answers.hazard_close < 0.25) return null;
   const x = answers.direction === "left" ? 24 : answers.direction === "right" ? 76 : 50;
-  const y = clamp(42 + answers.base_row * 9, 32, 70);
+  const y = clamp(30 + answers.base_row * 10, 25, 72);
   const tone = urgencyTone(answers.urgency);
   const size = 90 + answers.distance * 30; // Closer things glow bigger.
   const name = answers.subject.replace(/_/g, " ");
@@ -119,12 +119,18 @@ export function Details({
   motionAllowed,
   sent,
   latencyMs,
+  note,
+  children,
 }: {
   answers: Answers | null | undefined;
   motion: Motion | null;
   motionAllowed: boolean;
   sent: number;
   latencyMs: number | null;
+  // A setup warning, such as the voice falling back to the phone's.
+  note: string | null;
+  // Extra controls for the team, shown under the numbers.
+  children?: React.ReactNode;
 }) {
   const bars: { label: string; value: number }[] = answers
     ? [
@@ -137,6 +143,12 @@ export function Details({
     : [];
   return (
     <div className="echo-glass rounded-3xl p-4">
+      {children && (
+        <div className="mb-3 border-b border-white/10 pb-3">
+          <p className="mb-2 text-xs text-white/50">Play a sample</p>
+          {children}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
         {bars.map((b) => (
           <div key={b.label}>
@@ -162,6 +174,7 @@ export function Details({
           ? ` · tilt ${Math.round(motion.pitch)}° · head ${Math.round(motion.headOffset)}° · ${motion.cadence.toFixed(1)} steps/s`
           : !motionAllowed && " · motion sensors off"}
       </p>
+      {note && <p className="mt-1 text-xs leading-relaxed text-[var(--echo-caution)]/80">{note}</p>}
     </div>
   );
 }
