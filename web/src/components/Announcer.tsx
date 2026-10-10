@@ -66,24 +66,25 @@ export default function Announcer({ announcement, className }: Props) {
 
   if (!caption) return null;
   return (
-    <div key={caption} className={`hud-caption hud-caption-${severity} ${className ?? ""}`} aria-live="polite">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[9px] font-semibold tracking-[0.25em] uppercase opacity-80">
-          {CAPTION_LABEL[severity]}
-        </span>
-        {voice === "browser" && <span className="font-mono text-[9px] tracking-wider opacity-60">PHONE VOICE</span>}
-        {voice === "none" && (
-          <span className="font-mono text-[9px] tracking-wider text-[var(--hud-alarm)]">NO SOUND</span>
-        )}
+    <div
+      key={caption}
+      className={`echo-caption echo-caption-${severity} ${className ?? ""}`}
+      aria-live={severity === "stop" ? "assertive" : "polite"}
+    >
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <span className="echo-caption-dot h-2.5 w-2.5 rounded-full" />
+        {CAPTION_LABEL[severity]}
+        {voice === "browser" && <span className="ml-auto text-xs font-normal text-white/50">Phone voice</span>}
+        {voice === "none" && <span className="ml-auto text-xs font-normal text-white/70">No sound played</span>}
       </div>
-      <p className="mt-1 text-lg leading-snug font-semibold text-white">“{caption}”</p>
+      <p className="mt-1.5 text-2xl leading-snug font-semibold text-white">{caption}</p>
     </div>
   );
 }
 
 const CAPTION_LABEL: Record<Severity, string> = {
-  alarm: "▲ Alarm",
-  warning: "● Warning",
-  info: "◆ Echo",
-  clear: "✓ Path clear",
+  stop: "Stop",
+  caution: "Heads up",
+  info: "Echo says",
+  calm: "On your way",
 };
