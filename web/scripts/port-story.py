@@ -65,6 +65,15 @@ html.is-deck .deck-ch .brand { display: none; }
 html.is-deck .echo-left .film { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 18px; }
 html.is-deck .echo-left .film-video { order: -1; height: clamp(240px, calc(100vh - 500px), 440px); width: auto; aspect-ratio: 720 / 1564; border-radius: 22px; }
 html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
+/* Phones: the spoken caption is a small speech bubble that matches "Some of what it said",
+   and the context diagram scales to the screen instead of scrolling sideways. */
+@media (max-width: 900px) {
+  #built .caption, .caption { bottom: 10px; width: max-content; max-width: calc(100% - 24px); height: auto; min-height: 0; padding: 6px 12px 6px 10px; gap: 8px; align-items: center; border-radius: 12px 12px 12px 4px; background: var(--voice); font-size: 13px; line-height: 1.3; white-space: normal; box-shadow: 0 6px 16px -6px rgba(47, 91, 234, 0.5); }
+  #built .caption::before, .caption::before { display: none; }
+  #built .caption.alarm, .caption.alarm { background: var(--alarm); box-shadow: 0 6px 16px -6px rgba(217, 58, 30, 0.5); }
+  #built .ctx { overflow-x: visible; }
+  #built .ctx-svg { min-width: 0; width: 100%; padding: 10px 4px; }
+}
 .demo-page { padding-block: clamp(40px, 5vw, 64px) 0; }
 .demo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 @media (max-width: 860px) { .demo { grid-template-columns: minmax(0, 1fr); } }
