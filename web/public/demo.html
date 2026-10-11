@@ -724,6 +724,96 @@ html.is-deck .built-head { margin-bottom: 12px; flex-direction: row; align-items
 .a-l.ret { stroke-dasharray: 4 4; }
 .a-e { font-size: 11px !important; }
 
+/* slide 4, holistic layout */
+html.is-deck #built .arch { margin-bottom: 14px; }
+#built .arch-svg { padding: 8px 12px 4px; }
+#built .a-t { font-size: 15px; }
+#built .a-m { font-size: 10px; fill: var(--voice); }
+#built .a-e { paint-order: stroke; stroke: #FFFFFF; stroke-width: 6px; }
+#built .built { align-items: stretch; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; }
+#built .built-l { padding: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+#built .tabs-h { align-items: center; padding: 6px 8px 6px 16px; }
+#built .tabs-h .tabs { margin: 0; }
+#built .built-l .console, #built .built-l .trip { border: 0; border-radius: 0; box-shadow: none; }
+#built .built-l .panes { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .pane.on { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .console { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .con-body { flex: 1; }
+#built .built-r { gap: 0; }
+#built .ctx { flex: 1; display: flex; flex-direction: column; }
+#built .ctx-svg { flex: 1; min-height: 0; width: 100%; padding: 12px 16px; }
+@media (max-height: 820px) {
+  html.is-deck #built .built-l .con-foot { display: none; }
+  html.is-deck #built .built-l .con-bar { padding: 6px 12px; }
+  html.is-deck #built .built-l .trip-foot { display: none; }
+  html.is-deck #built .built-l .side section:last-child { display: none; }
+  html.is-deck #built .arch { margin-bottom: 10px; }
+  html.is-deck #built .built-head { margin-bottom: 8px; }
+}
+html.is-deck #built .trip svg { max-height: calc(100vh - 380px); }
+
+/* slide 4: calmer spacing, steady panel */
+html.is-deck #built .built-head { margin-bottom: clamp(14px, 2.4vh, 24px); }
+html.is-deck #built .arch { margin-bottom: clamp(14px, 2.4vh, 24px); }
+#built .built { gap: clamp(16px, 1.8vw, 24px); }
+#built .arch-svg { padding: 12px 16px 6px; }
+#built .ctx-svg { padding: 18px 22px; }
+html.is-deck #built .built-l .panes { display: grid; }
+html.is-deck #built .built-l .pane { display: flex !important; flex-direction: column; grid-area: 1 / 1; visibility: hidden; animation: none; }
+html.is-deck #built .built-l .pane.on { visibility: visible; animation: paneIn 260ms ease; }
+html.is-deck #built .built-l .trip { height: 100%; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .trip svg { flex: 1; min-height: 0; max-height: none; height: 100%; }
+html.is-deck #built .built-l .pane[data-tab="From above"] { min-height: 0; overflow: hidden; }
+
+/* slide 4: fixed-height demo panel so live updates never move the layout */
+html.is-deck #built .built-l, html.is-deck #built .built-r { height: clamp(360px, calc(100vh - 305px), 560px); }
+html.is-deck #built .built-r .ctx { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .panes { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .pane { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .con-body { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .side { overflow: hidden; }
+html.is-deck #built .built-l .kv dd, html.is-deck #built .built-l .log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.is-deck #built .built-l .log { max-height: 20px; overflow: hidden; }
+html #built .built-l .con-bar { display: none; }
+
+#built .tabs-l { display: inline-flex; align-items: center; gap: 12px; }
+#built .sim { display: inline-flex; align-items: center; gap: 6px; padding-left: 12px; border-left: 1px solid var(--line-strong); color: var(--ink-3); }
+#built .sim i { width: 6px; height: 6px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.15); }
+
+/* video: never crop, including native full screen */
+.show .film-frame video { object-fit: contain; background: #0B0D12; }
+video:fullscreen { object-fit: contain; }
+/* phone and narrow windows: slide 4 stacks */
+.arch-m { display: none; }
+@media (max-width: 899px) {
+  #built .built-head { flex-direction: column !important; align-items: flex-start !important; gap: 10px; }
+  #built .arch-svg { display: none; }
+  #built .arch-m { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 6px 0; }
+  #built .arch-m li { display: grid; grid-template-columns: 74px minmax(0, 1fr); column-gap: 10px; padding: 9px 16px; font-size: 14px; line-height: 1.4; color: var(--ink-2); border-top: 1px solid var(--line); }
+  #built .arch-m li:first-child { border-top: 0; }
+  #built .arch-m li.hl { background: var(--voice-soft); }
+  #built .arch-m span { grid-row: span 2; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--voice); padding-top: 2px; }
+  #built .arch-m b { color: var(--ink); font-weight: 600; }
+  #built .arch { margin-bottom: 16px; }
+  #built .built { grid-template-columns: minmax(0, 1fr) !important; gap: 16px; }
+  #built .built-l, #built .built-r { height: auto !important; }
+  #built .built-l .con-body { grid-template-columns: minmax(0, 1fr) !important; }
+  #built .built-l .view { aspect-ratio: 4 / 3; min-height: 0; }
+  #built .built-l .side .s-around { display: block; }
+  #built .built-l .pane + .pane { margin-top: 0; border-top: 1px solid var(--line); }
+  #built .box-h span + span:not(.tabs-l) { display: none; }
+  #built .tabs-h { padding: 10px 16px; }
+  #built .ctx-svg { padding: 12px 8px; }
+  #built .ctx { overflow-x: auto; }
+  #built .ctx-svg { min-width: 420px; }
+}
+/* phone: show the whole cane drawing; the captions below name each hazard */
+@media (max-width: 640px) {
+  .drawing svg { min-width: 0; }
+  .drawing svg text { display: none; }
+  .drawing { padding: 12px; }
+}
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }

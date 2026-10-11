@@ -724,6 +724,96 @@ html.is-deck .built-head { margin-bottom: 12px; flex-direction: row; align-items
 .a-l.ret { stroke-dasharray: 4 4; }
 .a-e { font-size: 11px !important; }
 
+/* slide 4, holistic layout */
+html.is-deck #built .arch { margin-bottom: 14px; }
+#built .arch-svg { padding: 8px 12px 4px; }
+#built .a-t { font-size: 15px; }
+#built .a-m { font-size: 10px; fill: var(--voice); }
+#built .a-e { paint-order: stroke; stroke: #FFFFFF; stroke-width: 6px; }
+#built .built { align-items: stretch; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; }
+#built .built-l { padding: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+#built .tabs-h { align-items: center; padding: 6px 8px 6px 16px; }
+#built .tabs-h .tabs { margin: 0; }
+#built .built-l .console, #built .built-l .trip { border: 0; border-radius: 0; box-shadow: none; }
+#built .built-l .panes { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .pane.on { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .console { flex: 1; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .con-body { flex: 1; }
+#built .built-r { gap: 0; }
+#built .ctx { flex: 1; display: flex; flex-direction: column; }
+#built .ctx-svg { flex: 1; min-height: 0; width: 100%; padding: 12px 16px; }
+@media (max-height: 820px) {
+  html.is-deck #built .built-l .con-foot { display: none; }
+  html.is-deck #built .built-l .con-bar { padding: 6px 12px; }
+  html.is-deck #built .built-l .trip-foot { display: none; }
+  html.is-deck #built .built-l .side section:last-child { display: none; }
+  html.is-deck #built .arch { margin-bottom: 10px; }
+  html.is-deck #built .built-head { margin-bottom: 8px; }
+}
+html.is-deck #built .trip svg { max-height: calc(100vh - 380px); }
+
+/* slide 4: calmer spacing, steady panel */
+html.is-deck #built .built-head { margin-bottom: clamp(14px, 2.4vh, 24px); }
+html.is-deck #built .arch { margin-bottom: clamp(14px, 2.4vh, 24px); }
+#built .built { gap: clamp(16px, 1.8vw, 24px); }
+#built .arch-svg { padding: 12px 16px 6px; }
+#built .ctx-svg { padding: 18px 22px; }
+html.is-deck #built .built-l .panes { display: grid; }
+html.is-deck #built .built-l .pane { display: flex !important; flex-direction: column; grid-area: 1 / 1; visibility: hidden; animation: none; }
+html.is-deck #built .built-l .pane.on { visibility: visible; animation: paneIn 260ms ease; }
+html.is-deck #built .built-l .trip { height: 100%; display: flex; flex-direction: column; }
+html.is-deck #built .built-l .trip svg { flex: 1; min-height: 0; max-height: none; height: 100%; }
+html.is-deck #built .built-l .pane[data-tab="From above"] { min-height: 0; overflow: hidden; }
+
+/* slide 4: fixed-height demo panel so live updates never move the layout */
+html.is-deck #built .built-l, html.is-deck #built .built-r { height: clamp(360px, calc(100vh - 305px), 560px); }
+html.is-deck #built .built-r .ctx { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .panes { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .pane { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .con-body { min-height: 0; overflow: hidden; }
+html.is-deck #built .built-l .side { overflow: hidden; }
+html.is-deck #built .built-l .kv dd, html.is-deck #built .built-l .log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.is-deck #built .built-l .log { max-height: 20px; overflow: hidden; }
+html #built .built-l .con-bar { display: none; }
+
+#built .tabs-l { display: inline-flex; align-items: center; gap: 12px; }
+#built .sim { display: inline-flex; align-items: center; gap: 6px; padding-left: 12px; border-left: 1px solid var(--line-strong); color: var(--ink-3); }
+#built .sim i { width: 6px; height: 6px; border-radius: 50%; background: #12B76A; box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.15); }
+
+/* video: never crop, including native full screen */
+.show .film-frame video { object-fit: contain; background: #0B0D12; }
+video:fullscreen { object-fit: contain; }
+/* phone and narrow windows: slide 4 stacks */
+.arch-m { display: none; }
+@media (max-width: 899px) {
+  #built .built-head { flex-direction: column !important; align-items: flex-start !important; gap: 10px; }
+  #built .arch-svg { display: none; }
+  #built .arch-m { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 6px 0; }
+  #built .arch-m li { display: grid; grid-template-columns: 74px minmax(0, 1fr); column-gap: 10px; padding: 9px 16px; font-size: 14px; line-height: 1.4; color: var(--ink-2); border-top: 1px solid var(--line); }
+  #built .arch-m li:first-child { border-top: 0; }
+  #built .arch-m li.hl { background: var(--voice-soft); }
+  #built .arch-m span { grid-row: span 2; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--voice); padding-top: 2px; }
+  #built .arch-m b { color: var(--ink); font-weight: 600; }
+  #built .arch { margin-bottom: 16px; }
+  #built .built { grid-template-columns: minmax(0, 1fr) !important; gap: 16px; }
+  #built .built-l, #built .built-r { height: auto !important; }
+  #built .built-l .con-body { grid-template-columns: minmax(0, 1fr) !important; }
+  #built .built-l .view { aspect-ratio: 4 / 3; min-height: 0; }
+  #built .built-l .side .s-around { display: block; }
+  #built .built-l .pane + .pane { margin-top: 0; border-top: 1px solid var(--line); }
+  #built .box-h span + span:not(.tabs-l) { display: none; }
+  #built .tabs-h { padding: 10px 16px; }
+  #built .ctx-svg { padding: 12px 8px; }
+  #built .ctx { overflow-x: auto; }
+  #built .ctx-svg { min-width: 420px; }
+}
+/* phone: show the whole cane drawing; the captions below name each hazard */
+@media (max-width: 640px) {
+  .drawing svg { min-width: 0; }
+  .drawing svg text { display: none; }
+  .drawing { padding: 12px; }
+}
+
 /* Site additions: the shared site nav, the recorded walk, the closing call to action and the demo page. */
 .site { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg-3); }
 .site a { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
@@ -911,11 +1001,23 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
     <div class="wrap slide-inner">
       <div class="built-head">
         <span class="eyebrow"><b>04</b> How we built it</span>
-        <h2 id="h-built">Five steps, twice a second.</h2>
+        <h2 id="h-built">How Echo decides when to speak, twice a second.</h2>
+      </div>
+      <div class="card arch">
+        <svg class="arch-svg" viewBox="0 0 1084 92" role="img" aria-label="Architecture. The glasses capture frames and motion. The OpenAI Decisions API answers the navigation questions. Plain code on Vercel decides whether to stay quiet, speak or sound the alarm. Gemini TTS speaks the words, and the voice plays in your ear.">
+          <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#98A2B3"/></marker></defs>
+          <rect class="a-node" x="4" y="6" width="200" height="58" rx="12"/><text class="a-m" x="18" y="24">01 SEE</text><text class="a-t" x="18" y="42">Glasses</text><text class="a-s" x="18" y="57">camera · motion sensors</text><rect class="a-node hl" x="296" y="6" width="200" height="58" rx="12"/><text class="a-m" x="310" y="24">02 DECIDE</text><text class="a-t" x="310" y="42">OpenAI Decisions API</text><text class="a-s" x="310" y="57">answers the navigation questions</text><rect class="a-node" x="588" y="6" width="200" height="58" rx="12"/><text class="a-m" x="602" y="24">03 ROUTE</text><text class="a-t" x="602" y="42">Plain code on Vercel</text><text class="a-s" x="602" y="57">silence, words or the alarm</text><rect class="a-node" x="880" y="6" width="200" height="58" rx="12"/><text class="a-m" x="894" y="24">04 SPEAK</text><text class="a-t" x="894" y="42">Gemini TTS</text><text class="a-s" x="894" y="57">a natural voice</text>
+          <path class="a-l" d="M206 35 H294" marker-end="url(#ah)"/><text class="a-e" x="250" y="28" text-anchor="middle">2 frames</text>
+          <path class="a-l" d="M498 35 H586" marker-end="url(#ah)"/><text class="a-e" x="542" y="28" text-anchor="middle">numbers</text>
+          <path class="a-l" d="M790 35 H878" marker-end="url(#ah)"/><text class="a-e" x="834" y="28" text-anchor="middle">words</text>
+          <path class="a-l ret" d="M980 64 V84 H104 V66" marker-end="url(#ah)"/>
+          <text class="a-e" x="542" y="88" text-anchor="middle">voice or chime, in your ear</text>
+        </svg>
+        <ol class="arch-m"><li><span>01 See</span><b>Glasses</b> camera · motion sensors</li><li class="hl"><span>02 Decide</span><b>OpenAI Decisions API</b> answers the navigation questions</li><li><span>03 Route</span><b>Plain code on Vercel</b> silence, words or the alarm</li><li><span>04 Speak</span><b>Gemini TTS</b> a natural voice, in your ear</li></ol>
       </div>
       <div class="built">
-        <div class="built-l">
-      <div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Live view</button><button type="button" role="tab" data-i="1"><span>2</span>From above</button></div>
+        <div class="built-l card">
+          <div class="box-h tabs-h"><span class="tabs-l">Live demo<span class="sim"><i aria-hidden="true"></i>Simulation</span></span><div class="tabs" role="tablist"><button type="button" role="tab" data-i="0"><span>1</span>Live view</button><button type="button" role="tab" data-i="1"><span>2</span>From above</button></div></div>
       <div class="panes">
       <div class="pane on" data-tab="Live view">
       <div class="card console" id="console">
@@ -1042,51 +1144,36 @@ html:not(.is-deck) .echo-left .film-video { margin-top: 8px; }
       </div>
         </div>
         <div class="built-r">
-          <div class="card arch">
-            <div class="box-h"><span>Architecture</span><span>Every look, twice a second</span></div>
-            <svg class="arch-svg" viewBox="0 0 560 176" role="img" aria-label="Architecture. The glasses capture frames and motion. The OpenAI Decisions API answers the navigation questions. Plain code on Vercel decides whether to stay quiet, speak or sound the alarm, helped by a narrator every 4 seconds. Gemini TTS speaks the words, and the voice plays in your ear.">
-              <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#98A2B3"/></marker></defs>
-              <text class="a-m" x="59" y="22" text-anchor="middle">SEE</text><text class="a-m" x="205" y="22" text-anchor="middle">DECIDE</text><text class="a-m" x="351" y="22" text-anchor="middle">ROUTE</text><text class="a-m" x="497" y="22" text-anchor="middle">SPEAK</text>
-              <rect class="a-node" x="4" y="34" width="110" height="66" rx="12"/><text class="a-t" x="59" y="62" text-anchor="middle">Glasses</text><text class="a-s" x="59" y="82" text-anchor="middle">camera · motion</text><rect class="a-node hl" x="150" y="34" width="110" height="66" rx="12"/><text class="a-t" x="205" y="62" text-anchor="middle">OpenAI</text><text class="a-s" x="205" y="82" text-anchor="middle">Decisions API</text><rect class="a-node" x="296" y="34" width="110" height="66" rx="12"/><text class="a-t" x="351" y="62" text-anchor="middle">Plain code</text><text class="a-s" x="351" y="82" text-anchor="middle">on Vercel</text><rect class="a-node" x="442" y="34" width="110" height="66" rx="12"/><text class="a-t" x="497" y="62" text-anchor="middle">Gemini</text><text class="a-s" x="497" y="82" text-anchor="middle">TTS</text>
-              <path class="a-l" d="M114 67 H148" marker-end="url(#ah)"/>
-              <path class="a-l" d="M260 67 H294" marker-end="url(#ah)"/>
-              <path class="a-l" d="M406 67 H440" marker-end="url(#ah)"/>
-              <path class="a-l ret" d="M497 100 V150 H59 V102" marker-end="url(#ah)"/>
-              <text class="a-e" x="284" y="146" text-anchor="middle">voice or chime, in your ear</text>
-            </svg>
-          </div>
           <div class="card ctx">
-            <div class="box-h"><span>Context design</span><span>One look becomes one decision</span></div>
-            <svg class="ctx-svg" viewBox="0 0 560 222" role="img" aria-label="Context design. Three frames, a scene line from the motion sensors and what Echo said recently are combined into one decision frame. The decision model answers four questions as probabilities, plus what, where and how far. Plain code turns that into silence, a few words, or the alarm once two frames agree.">
+            <div class="box-h"><span>Context design</span><span>What it weighs, twice a second</span></div>
+            <svg class="ctx-svg" viewBox="0 0 520 372" role="img" aria-label="Context design. Three frames, a scene line from the motion sensors and what Echo said recently are combined into one decision frame. The decision model answers four questions as probabilities, plus what, where and how far. Plain code turns that into silence, a few words, or the alarm once two frames agree.">
               <defs><marker id="ch" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#98A2B3"/></marker></defs>
-              <text x="8" y="14" class="c-k">FRAMES</text>
-              <g class="th "><rect x="8" y="20" width="52" height="38" rx="5"/><path d="M8 58 L28 40 L40 40 L60 58" class="th-l"/><rect x="38" y="40" width="7" height="10" rx="1" class="th-o"/><text x="34" y="70" text-anchor="middle" class="c-m">spoken</text></g><g class="th "><rect x="66" y="20" width="52" height="38" rx="5"/><path d="M66 58 L86 40 L98 40 L118 58" class="th-l"/><rect x="92" y="40" width="7" height="10" rx="1" class="th-o"/><text x="92" y="70" text-anchor="middle" class="c-m">0.5 s ago</text></g><g class="th now"><rect x="124" y="20" width="52" height="38" rx="5"/><path d="M124 58 L144 40 L156 40 L176 58" class="th-l"/><rect x="146" y="40" width="7" height="10" rx="1" class="th-o"/><text x="150" y="70" text-anchor="middle" class="c-m">newest</text></g>
-              <text x="8" y="100" class="c-k">MOTION</text>
-              <rect x="8" y="106" width="168" height="36" rx="8" class="c-card"/>
-              <text x="18" y="121" class="c-s">Walking · 1.1 m/s</text>
-              <text x="18" y="135" class="c-s">Head tilted 10° down</text>
-              <text x="8" y="162" class="c-k">RECENT WORDS</text>
-              <path d="M8 172 h168 a8 8 0 0 1 8 8 v18 a8 8 0 0 1 -8 8 h-150 l-10 8 v-8 h-0 a8 8 0 0 1 -8 -8 v-18 a8 8 0 0 1 8 -8 z" class="c-bub"/>
-              <text x="18" y="193" class="c-w">"Door, about 5 steps ahead."</text>
-              <path class="c-l" d="M184 44 C214 44 214 100 248 100" marker-end="url(#ch)"/>
-              <path class="c-l" d="M184 124 C214 124 214 112 248 112" marker-end="url(#ch)"/>
-              <path class="c-l" d="M190 188 C220 188 214 124 248 124" marker-end="url(#ch)"/>
-              <rect x="252" y="20" width="168" height="190" rx="12" class="c-df"/>
-              <text x="336" y="40" text-anchor="middle" class="c-dt">Decision frame</text>
-              <g class="c-g"><text x="264" y="64" class="c-gn">stop</text><rect x="318" y="57" width="70" height="6" rx="3" class="c-gb"/><rect x="318" y="57" width="4" height="6" rx="3" class="c-gf"/><text x="408" y="64" text-anchor="end" class="c-gv">.04</text></g>
-              <g class="c-g"><text x="264" y="84" class="c-gn">course</text><rect x="318" y="77" width="70" height="6" rx="3" class="c-gb"/><rect x="318" y="77" width="50" height="6" rx="3" class="c-gf"/><text x="408" y="84" text-anchor="end" class="c-gv">.71</text></g>
-              <g class="c-g"><text x="264" y="104" class="c-gn">footing</text><rect x="318" y="97" width="70" height="6" rx="3" class="c-gb"/><rect x="318" y="97" width="4" height="6" rx="3" class="c-gf"/><text x="408" y="104" text-anchor="end" class="c-gv">.05</text></g>
-              <g class="c-g"><text x="264" y="124" class="c-gn">orient</text><rect x="318" y="117" width="70" height="6" rx="3" class="c-gb"/><rect x="318" y="117" width="6" height="6" rx="3" class="c-gf"/><text x="408" y="124" text-anchor="end" class="c-gv">.09</text></g>
-              <line x1="264" y1="140" x2="408" y2="140" class="c-sep"/>
-              <text x="264" y="158" class="c-gn">what</text><text x="408" y="158" text-anchor="end" class="c-ga">door</text>
-              <text x="264" y="176" class="c-gn">where</text><text x="408" y="176" text-anchor="end" class="c-ga">ahead</text>
-              <text x="264" y="194" class="c-gn">how far</text><text x="408" y="194" text-anchor="end" class="c-ga">about 5 steps</text>
-              <path class="c-l" d="M420 115 H452" marker-end="url(#ch)"/>
-              <text x="456" y="40" class="c-k">CODE DECIDES</text>
-              <rect x="456" y="54" width="96" height="30" rx="15" class="c-o"/><text x="504" y="73" text-anchor="middle" class="c-ot">Silence</text>
-              <rect x="456" y="100" width="96" height="30" rx="15" class="c-o w"/><text x="504" y="119" text-anchor="middle" class="c-ot w">Words</text>
-              <rect x="456" y="146" width="96" height="30" rx="15" class="c-o a"/><text x="504" y="165" text-anchor="middle" class="c-ot">Alarm</text>
-              <text x="504" y="196" text-anchor="middle" class="c-m">2 frames must agree</text>
+              <text x="12" y="16" class="c-k">FRAMES</text>
+              <g class="th "><rect x="12" y="24" width="46" height="34" rx="5"/><path d="M12 58 L30 42 L40 42 L58 58" class="th-l"/><rect x="38" y="42" width="6" height="9" rx="1" class="th-o"/><text x="35" y="70" text-anchor="middle" class="c-m">spoken</text></g><g class="th "><rect x="64" y="24" width="46" height="34" rx="5"/><path d="M64 58 L82 42 L92 42 L110 58" class="th-l"/><rect x="86" y="42" width="6" height="9" rx="1" class="th-o"/><text x="87" y="70" text-anchor="middle" class="c-m">0.5 s ago</text></g><g class="th now"><rect x="116" y="24" width="46" height="34" rx="5"/><path d="M116 58 L134 42 L144 42 L162 58" class="th-l"/><rect x="134" y="42" width="6" height="9" rx="1" class="th-o"/><text x="139" y="70" text-anchor="middle" class="c-m">newest</text></g>
+              <text x="190" y="16" class="c-k">MOTION</text>
+              <rect x="190" y="24" width="140" height="40" rx="8" class="c-card"/>
+              <text x="200" y="41" class="c-s">Walking · 1.1 m/s</text>
+              <text x="200" y="56" class="c-s">Head tilted 10° down</text>
+              <text x="348" y="16" class="c-k">RECENT WORDS</text>
+              <path d="M348 24 h156 a8 8 0 0 1 8 8 v24 a8 8 0 0 1 -8 8 h-138 l-10 8 v-8 h-0 a8 8 0 0 1 -8 -8 v-24 a8 8 0 0 1 8 -8 z" class="c-bub"/>
+              <text x="358" y="41" class="c-w">"Door, about 5 steps</text>
+              <text x="358" y="56" class="c-w">ahead." · 3 s ago</text>
+              <path class="c-l" d="M85 92 C85 116 230 104 236 128" marker-end="url(#ch)"/>
+              <path class="c-l" d="M260 70 V128" marker-end="url(#ch)"/>
+              <path class="c-l" d="M430 84 C430 112 290 104 284 128" marker-end="url(#ch)"/>
+              <rect x="174" y="132" width="192" height="168" rx="12" class="c-df"/>
+              <text x="270" y="154" text-anchor="middle" class="c-dt">Decision frame</text>
+              <text x="188" y="178" class="c-gn">stop</text><rect x="250" y="171" width="76" height="6" rx="3" class="c-gb"/><rect x="250" y="171" width="3" height="6" rx="3" class="c-gf"/><text x="350" y="178" text-anchor="end" class="c-gv">.04</text><text x="188" y="196" class="c-gn">course</text><rect x="250" y="189" width="76" height="6" rx="3" class="c-gb"/><rect x="250" y="189" width="54" height="6" rx="3" class="c-gf"/><text x="350" y="196" text-anchor="end" class="c-gv">.71</text><text x="188" y="214" class="c-gn">footing</text><rect x="250" y="207" width="76" height="6" rx="3" class="c-gb"/><rect x="250" y="207" width="4" height="6" rx="3" class="c-gf"/><text x="350" y="214" text-anchor="end" class="c-gv">.05</text><text x="188" y="232" class="c-gn">orient</text><rect x="250" y="225" width="76" height="6" rx="3" class="c-gb"/><rect x="250" y="225" width="7" height="6" rx="3" class="c-gf"/><text x="350" y="232" text-anchor="end" class="c-gv">.09</text>
+              <line x1="188" y1="244" x2="352" y2="244" class="c-sep"/>
+              <text x="188" y="260" class="c-gn">what</text><text x="352" y="260" text-anchor="end" class="c-ga">door</text>
+              <text x="188" y="275" class="c-gn">where</text><text x="352" y="275" text-anchor="end" class="c-ga">ahead</text>
+              <text x="188" y="290" class="c-gn">how far</text><text x="352" y="290" text-anchor="end" class="c-ga">about 5 steps</text>
+              <path class="c-l" d="M270 300 V322" marker-end="url(#ch)"/>
+              <text x="12" y="344" class="c-k">CODE DECIDES</text>
+              <rect x="130" y="326" width="84" height="28" rx="14" class="c-o"/><text x="172" y="344" text-anchor="middle" class="c-ot">Silence</text>
+              <rect x="228" y="326" width="84" height="28" rx="14" class="c-o w"/><text x="270" y="344" text-anchor="middle" class="c-ot w">Words</text>
+              <rect x="326" y="326" width="84" height="28" rx="14" class="c-o a"/><text x="368" y="344" text-anchor="middle" class="c-ot">Alarm</text>
+              <text x="368" y="368" text-anchor="middle" class="c-m">2 frames must agree</text>
             </svg>
           </div>
         </div>
